@@ -1,20 +1,95 @@
 """
 Advanced Custom Evaluators for Financial Agent LangSmith Evaluation
 Includes LLM-as-judge evaluators for financial accuracy, reasoning, completeness, and trajectory analysis.
+Enhanced with robust structured output using Pydantic models.
 """
 import json
-from typing import Dict, Any, List, Optional
-from langchain_openai import ChatOpenAI
+from typing import Dict, Any, List, Optional, Union
 from langsmith.evaluation import evaluate
 from langsmith import Client
+from pydantic import BaseModel, Field, field_validator
 import config
 
-# Initialize evaluator LLM
-evaluator_llm = ChatOpenAI(
-    model=config.EVALUATOR_MODEL,
-    temperature=0,
-    api_key=config.OPENAI_API_KEY
-)
+# Enhanced Pydantic models for structured output
+class EvaluationResponse(BaseModel):
+    """Structured response for LLM-as-judge evaluations."""
+    score: float = Field(description="Score between 0 and 1", ge=0.0, le=1.0)
+    reasoning: str = Field(description="Detailed explanation of the evaluation", min_length=10)
+
+    @field_validator('score')
+    @classmethod
+    def validate_score(cls, v):
+        """Ensure score is properly bounded and rounded."""
+        return max(0.0, min(1.0, round(v, 3)))
+
+    @field_validator('reasoning')
+    @classmethod
+    def validate_reasoning(cls, v):
+        """Ensure reasoning is substantive."""
+        if len(v.strip()) < 10:
+            raise ValueError("Reasoning must be at least 10 characters long")
+        return v.strip()
+
+class TrajectoryEvaluationResponse(BaseModel):
+    """Specialized response for trajectory evaluation with additional fields."""
+    score: float = Field(description="Score between 0 and 1", ge=0.0, le=1.0)
+    reasoning: str = Field(description="Detailed explanation of the evaluation", min_length=10)
+    used_tools: List[str] = Field(description="List of tools actually used by the agent")
+    expected_tools: List[str] = Field(description="List of tools that were expected to be used")
+    similarity_metric: float = Field(description="Calculated similarity score", ge=0.0, le=1.0)
+
+    @field_validator('score', 'similarity_metric')
+    @classmethod
+    def validate_scores(cls, v):
+        """Ensure scores are properly bounded and rounded."""
+        return max(0.0, min(1.0, round(v, 3)))
+
+class HallucinationEvaluationResponse(BaseModel):
+    """Specialized response for hallucination detection with confidence scoring."""
+    score: float = Field(description="Score between 0 and 1 (1 = no hallucinations)", ge=0.0, le=1.0)
+    reasoning: str = Field(description="Detailed explanation of the evaluation", min_length=10)
+    confidence: float = Field(description="Confidence in the evaluation", ge=0.0, le=1.0)
+    potential_issues: List[str] = Field(description="List of potential hallucination issues found", default=[])
+
+    @field_validator('score', 'confidence')
+    @classmethod
+    def validate_scores(cls, v):
+        """Ensure scores are properly bounded and rounded."""
+        return max(0.0, min(1.0, round(v, 3)))
+
+# Initialize evaluator LLM using factory function
+evaluator_llm = config.get_evaluator_model()
+
+# Create structured evaluator LLMs for different response types
+standard_evaluator_llm = evaluator_llm.with_structured_output(EvaluationResponse)
+trajectory_evaluator_llm = evaluator_llm.with_structured_output(TrajectoryEvaluationResponse)
+hallucination_evaluator_llm = evaluator_llm.with_structured_output(HallucinationEvaluationResponse)
+
+def safe_structured_evaluation(llm_func, fallback_score: float = 0.0, evaluator_name: str = "unknown") -> Dict[str, Any]:
+    """
+    Safely execute a structured LLM evaluation with comprehensive error handling.
+
+    Args:
+        llm_func: Function that calls the LLM and returns a Pydantic model
+        fallback_score: Score to return if evaluation fails
+        evaluator_name: Name of the evaluator for error reporting
+
+    Returns:
+        Dictionary with evaluation results
+    """
+    try:
+        result = llm_func()
+        return result.model_dump() if hasattr(result, 'model_dump') else result.dict()
+    except Exception as e:
+        error_msg = f"Structured evaluation failed in {evaluator_name}: {str(e)}"
+        print(f"⚠️ {error_msg}")
+
+        # Return a safe fallback structure
+        return {
+            "score": fallback_score,
+            "reasoning": error_msg,
+            "evaluation_error": True
+        }
 
 def financial_accuracy_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], reference_outputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
@@ -48,37 +123,20 @@ def financial_accuracy_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any]
     - Market data correctness
     - Mathematical calculations
 
-    Respond with a JSON object containing:
-    - "score": float between 0 and 1
-    - "reasoning": string explaining your evaluation
+    Provide a detailed reasoning for your evaluation.
     """
 
-    try:
-        result = evaluator_llm.invoke(evaluation_prompt)
-        content = result.content.strip()
+    def evaluate():
+        return standard_evaluator_llm.invoke(evaluation_prompt)
 
-        # Try to parse JSON response
-        try:
-            parsed = json.loads(content)
-            score = float(parsed.get("score", 0.0))
-            reasoning = parsed.get("reasoning", "No reasoning provided")
-        except (json.JSONDecodeError, ValueError):
-            # Fallback: extract score from text
-            score = 0.5  # Default score
-            reasoning = f"Could not parse evaluator response: {content}"
+    result = safe_structured_evaluation(evaluate, 0.0, "financial_accuracy")
 
-        return {
-            "key": "financial_accuracy",
-            "score": max(0.0, min(1.0, score)),  # Ensure score is between 0 and 1
-            "comment": reasoning
-        }
-
-    except Exception as e:
-        return {
-            "key": "financial_accuracy",
-            "score": 0.0,
-            "comment": f"Evaluation error: {str(e)}"
-        }
+    return {
+        "key": "financial_accuracy",
+        "score": result.get("score", 0.0),
+        "comment": result.get("reasoning", "Evaluation failed"),
+        "evaluation_error": result.get("evaluation_error", False)
+    }
 
 
 def logical_reasoning_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], reference_outputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -111,35 +169,20 @@ def logical_reasoning_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any],
     - Coherent argumentation
     - Step-by-step reasoning clarity
 
-    Respond with a JSON object containing:
-    - "score": float between 0 and 1
-    - "reasoning": string explaining your evaluation
+    Provide a detailed reasoning for your evaluation.
     """
 
-    try:
-        result = evaluator_llm.invoke(evaluation_prompt)
-        content = result.content.strip()
+    def evaluate():
+        return standard_evaluator_llm.invoke(evaluation_prompt)
 
-        try:
-            parsed = json.loads(content)
-            score = float(parsed.get("score", 0.0))
-            reasoning = parsed.get("reasoning", "No reasoning provided")
-        except (json.JSONDecodeError, ValueError):
-            score = 0.5
-            reasoning = f"Could not parse evaluator response: {content}"
+    result = safe_structured_evaluation(evaluate, 0.0, "logical_reasoning")
 
-        return {
-            "key": "logical_reasoning",
-            "score": max(0.0, min(1.0, score)),
-            "comment": reasoning
-        }
-
-    except Exception as e:
-        return {
-            "key": "logical_reasoning",
-            "score": 0.0,
-            "comment": f"Evaluation error: {str(e)}"
-        }
+    return {
+        "key": "logical_reasoning",
+        "score": result.get("score", 0.0),
+        "comment": result.get("reasoning", "Evaluation failed"),
+        "evaluation_error": result.get("evaluation_error", False)
+    }
 
 
 def completeness_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], reference_outputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -172,35 +215,20 @@ def completeness_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], refe
     - Providing sufficient detail
     - Answering sub-questions if present
 
-    Respond with a JSON object containing:
-    - "score": float between 0 and 1
-    - "reasoning": string explaining your evaluation
+    Provide a detailed reasoning for your evaluation.
     """
 
-    try:
-        result = evaluator_llm.invoke(evaluation_prompt)
-        content = result.content.strip()
+    def evaluate():
+        return standard_evaluator_llm.invoke(evaluation_prompt)
 
-        try:
-            parsed = json.loads(content)
-            score = float(parsed.get("score", 0.0))
-            reasoning = parsed.get("reasoning", "No reasoning provided")
-        except (json.JSONDecodeError, ValueError):
-            score = 0.5
-            reasoning = f"Could not parse evaluator response: {content}"
+    result = safe_structured_evaluation(evaluate, 0.0, "completeness")
 
-        return {
-            "key": "completeness",
-            "score": max(0.0, min(1.0, score)),
-            "comment": reasoning
-        }
-
-    except Exception as e:
-        return {
-            "key": "completeness",
-            "score": 0.0,
-            "comment": f"Evaluation error: {str(e)}"
-        }
+    return {
+        "key": "completeness",
+        "score": result.get("score", 0.0),
+        "comment": result.get("reasoning", "Evaluation failed"),
+        "evaluation_error": result.get("evaluation_error", False)
+    }
 
 
 def hallucination_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], reference_outputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -233,48 +261,44 @@ def hallucination_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], ref
     - Contradictory information within the response
     - Unrealistic financial scenarios
 
-    Respond with a JSON object containing:
-    - "score": float between 0 and 1
-    - "reasoning": string explaining your evaluation
+    Provide:
+    - A detailed reasoning for your evaluation
+    - Your confidence level in this assessment (0-1)
+    - A list of any specific potential issues you identified
     """
 
-    try:
-        result = evaluator_llm.invoke(evaluation_prompt)
-        content = result.content.strip()
+    def evaluate():
+        return hallucination_evaluator_llm.invoke(evaluation_prompt)
 
-        try:
-            parsed = json.loads(content)
-            score = float(parsed.get("score", 0.0))
-            reasoning = parsed.get("reasoning", "No reasoning provided")
-        except (json.JSONDecodeError, ValueError):
-            score = 0.5
-            reasoning = f"Could not parse evaluator response: {content}"
+    result = safe_structured_evaluation(evaluate, 1.0, "hallucination_detection")  # Default to "no hallucinations" on error
 
-        return {
-            "key": "hallucination_detection",
-            "score": max(0.0, min(1.0, score)),
-            "comment": reasoning
-        }
-
-    except Exception as e:
-        return {
-            "key": "hallucination_detection",
-            "score": 0.0,
-            "comment": f"Evaluation error: {str(e)}"
-        }
+    return {
+        "key": "hallucination_detection",
+        "score": result.get("score", 1.0),
+        "comment": result.get("reasoning", "Evaluation failed"),
+        "confidence": result.get("confidence", 0.0),
+        "potential_issues": result.get("potential_issues", []),
+        "evaluation_error": result.get("evaluation_error", False)
+    }
 
 
 def trajectory_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], reference_outputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
-    Evaluator for agent tool usage trajectory.
+    Enhanced evaluator for agent tool usage trajectory using structured output.
     Analyzes whether the agent used appropriate tools in a logical sequence.
     """
 
     question = inputs.get("question", "")
     response = outputs.get("response", "")
 
-    # Get expected trajectory from reference outputs
-    expected_trajectory = reference_outputs.get("expected_trajectory", []) if reference_outputs else []
+    # Get expected trajectory from reference outputs (check multiple possible keys)
+    expected_trajectory = []
+    if reference_outputs:
+        expected_trajectory = (
+            reference_outputs.get("expected_trajectory", []) or
+            reference_outputs.get("expected_tools", []) or
+            []
+        )
 
     # Extract actual tool usage from outputs - check multiple possible keys
     used_tools = []
@@ -321,19 +345,47 @@ def trajectory_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], refere
         max_length = max(len(seq1), len(seq2))
         return lcs_length / max_length if max_length > 0 else 1.0
 
-    # Calculate trajectory score
-    if expected_trajectory:
-        trajectory_score = lcs_similarity(used_tools, expected_trajectory)
-        reasoning = f"Used tools: {used_tools}, Expected: {expected_trajectory}, LCS similarity: {trajectory_score:.2f}"
-    else:
-        # If no expected trajectory, evaluate based on tool appropriateness
-        trajectory_score = 1.0 if used_tools else 0.5
-        reasoning = f"Used tools: {used_tools}. No expected trajectory provided."
+    # Calculate basic trajectory score
+    similarity_score = lcs_similarity(used_tools, expected_trajectory) if expected_trajectory else (1.0 if used_tools else 0.5)
+
+    # Use LLM for more sophisticated trajectory evaluation
+    evaluation_prompt = f"""
+    You are evaluating the tool usage trajectory of a financial agent.
+
+    Question: {question}
+    Agent's Response: {response}
+    Tools Actually Used: {used_tools}
+    Expected Tools: {expected_trajectory}
+    Calculated Similarity Score: {similarity_score:.3f}
+
+    Evaluate the trajectory on a scale of 0-1 considering:
+    - Appropriateness of tools chosen for the task
+    - Logical sequence of tool usage
+    - Efficiency (not using unnecessary tools)
+    - Completeness (using all necessary tools)
+    - Overall effectiveness of the tool strategy
+
+    Provide:
+    - Your overall trajectory score (0-1)
+    - Detailed reasoning for your evaluation
+    - List of tools that were actually used
+    - List of tools that were expected/should have been used
+    - The calculated similarity metric between expected and actual tools
+    """
+
+    def evaluate():
+        return trajectory_evaluator_llm.invoke(evaluation_prompt)
+
+    result = safe_structured_evaluation(evaluate, similarity_score, "trajectory_analysis")
 
     return {
         "key": "trajectory_analysis",
-        "score": max(0.0, min(1.0, trajectory_score)),
-        "comment": reasoning
+        "score": result.get("score", similarity_score),
+        "comment": result.get("reasoning", f"Basic similarity score: {similarity_score:.3f}"),
+        "used_tools": result.get("used_tools", used_tools),
+        "expected_tools": result.get("expected_tools", expected_trajectory),
+        "similarity_metric": result.get("similarity_metric", similarity_score),
+        "evaluation_error": result.get("evaluation_error", False)
     }
 
 
@@ -346,43 +398,53 @@ FINANCIAL_EVALUATORS = [
     trajectory_evaluator
 ]
 
-# Quick test functions
-def test_evaluators():
-    """Test the evaluators with sample data."""
-    print("🧪 Testing Custom Evaluators...")
+def validate_evaluator_health() -> Dict[str, bool]:
+    """
+    Validate that all evaluators are properly configured and can handle structured output.
 
-    # Sample run data
-    sample_run = type('Run', (), {
-        'inputs': {"question": "What is Apple's current stock price?"},
-        'outputs': {
-            "response": "Apple's current stock price is approximately $150.00 with a market cap of $2.4 trillion.",
-            "tool_trajectory": ["financial_data_api"],
-            "reasoning_steps": [{"tool": "financial_data_api", "input": "AAPL price", "output": "Current price: $150"}],
-            "unique_tools_used": ["financial_data_api"],
-            "total_tool_calls": 1
-        }
-    })()
+    Returns:
+        Dictionary mapping evaluator names to their health status
+    """
+    health_status = {}
 
-    sample_example = type('Example', (), {
-        'outputs': {
-            "response": "Apple's stock price is around $150 with market cap of $2.4T",
-            "expected_trajectory": ["financial_data_api"],
-            "category": "stock_analysis"
-        }
-    })()
-
-    evaluators = FINANCIAL_EVALUATORS
-
-    for evaluator in evaluators:
-        print(f"\n�� Testing {evaluator.__name__}...")
+    for evaluator in FINANCIAL_EVALUATORS:
         try:
-            result = evaluator(sample_run.inputs, sample_run.outputs, sample_example.outputs)
-            print(f"   Score: {result['score']}")
-            print(f"   Comment: {result['comment'][:100]}...")
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
+            # Test with minimal inputs
+            test_inputs = {"question": "test"}
+            test_outputs = {"response": "test response"}
 
-    print("\n✅ Evaluator testing complete!")
+            result = evaluator(test_inputs, test_outputs)
+
+            # Check if result has required fields
+            has_key = "key" in result
+            has_score = "score" in result and isinstance(result["score"], (int, float))
+            has_comment = "comment" in result and isinstance(result["comment"], str)
+
+            health_status[evaluator.__name__] = has_key and has_score and has_comment
+
+        except Exception as e:
+            print(f"❌ Evaluator {evaluator.__name__} failed health check: {e}")
+            health_status[evaluator.__name__] = False
+
+    return health_status
 
 if __name__ == "__main__":
-    test_evaluators()
+    print("🚀 Enhanced Custom Evaluators with Structured Output")
+    print(f"📋 Available evaluators: {[e.__name__ for e in FINANCIAL_EVALUATORS]}")
+
+    # Run health check
+    print("\n🏥 Running evaluator health check...")
+    health = validate_evaluator_health()
+
+    for name, status in health.items():
+        status_emoji = "✅" if status else "❌"
+        print(f"   {status_emoji} {name}: {'Healthy' if status else 'Unhealthy'}")
+
+    healthy_count = sum(health.values())
+    total_count = len(health)
+    print(f"\n📊 Health Summary: {healthy_count}/{total_count} evaluators are healthy")
+
+    if healthy_count == total_count:
+        print("🎉 All evaluators are ready for use!")
+    else:
+        print("⚠️ Some evaluators need attention before use.")

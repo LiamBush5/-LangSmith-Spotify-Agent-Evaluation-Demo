@@ -8,11 +8,17 @@ This script demonstrates:
 - Trajectory analysis and tool usage evaluation
 - Financial accuracy, reasoning, and completeness metrics
 - Realistic financial scenarios with complex calculations
+
+Usage:
+    python run_evaluation.py              # Run 3 examples (default for cost control)
+    python run_evaluation.py --max-examples 5    # Run 5 examples
+    python run_evaluation.py --all        # Run all 10 examples
 """
 import asyncio
 import pandas as pd
 from typing import Dict, List, Any
 import time
+import argparse
 from datetime import datetime
 
 from langsmith import Client
@@ -31,17 +37,20 @@ class FinancialAgentEvaluationDemo:
     Main class for running the comprehensive financial agent evaluation.
     """
 
-    def __init__(self):
+    def __init__(self, max_examples=None):
         self.client = client
         self.experiment_name = f"{config.EXPERIMENT_PREFIX}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         self.dataset_name = "Financial-Agent-Evaluation-Dataset"
         self.dataset_id = None
         self.evaluators = FINANCIAL_EVALUATORS
+        self.max_examples = max_examples  # New parameter to limit examples
 
         print("Financial Agent Evaluation Demo Initialized")
         print(f"Experiment Name: {self.experiment_name}")
         print(f"Dataset: {self.dataset_name}")
         print(f"Evaluators: {[e.__name__ for e in self.evaluators]}")
+        if self.max_examples:
+            print(f"Max Examples: {self.max_examples} (cost control enabled)")
 
     def setup_dataset(self) -> str:
         """Create and populate the evaluation dataset."""
@@ -50,8 +59,10 @@ class FinancialAgentEvaluationDemo:
         print("="*60)
 
         try:
-            self.dataset_id = create_langsmith_dataset(self.dataset_name)
+            self.dataset_id = create_langsmith_dataset(self.dataset_name, max_examples=self.max_examples)
+            examples_count = self.max_examples if self.max_examples else len(FINANCIAL_EVALUATION_DATASET)
             print(f"Dataset ready: {self.dataset_id}")
+            print(f"Examples to evaluate: {examples_count}")
             return self.dataset_id
         except Exception as e:
             print(f"Dataset setup failed: {e}")
@@ -69,10 +80,30 @@ class FinancialAgentEvaluationDemo:
         print(f"Max Concurrency: {config.MAX_CONCURRENCY}")
 
         try:
+            # Prepare data source for evaluation
+            data_source = self.dataset_name
+
+            # If cost control is enabled, create a sample of examples
+            if self.max_examples:
+                print(f"🎯 Sampling {self.max_examples} random examples from full dataset")
+
+                # Get all examples from the dataset
+                dataset = self.client.read_dataset(dataset_name=self.dataset_name)
+                all_examples = list(self.client.list_examples(dataset_id=dataset.id))
+
+                # Randomly sample the requested number of examples
+                import random
+                random.seed(42)  # For reproducibility
+                sampled_examples = random.sample(all_examples, min(self.max_examples, len(all_examples)))
+
+                # Use the sampled examples directly
+                data_source = sampled_examples
+                print(f"✓ Selected {len(sampled_examples)} examples for evaluation")
+
             # Run the evaluation
             results = evaluate(
                 run_financial_agent,  # target as first positional argument
-                data=self.dataset_name,
+                data=data_source,
                 evaluators=self.evaluators,
                 experiment_prefix=config.EXPERIMENT_PREFIX,
                 max_concurrency=config.MAX_CONCURRENCY,
@@ -199,51 +230,7 @@ class FinancialAgentEvaluationDemo:
 
         return insights
 
-    def generate_report(self, results, df: pd.DataFrame, insights: List[str]) -> str:
-        """Generate a comprehensive evaluation report."""
-        report = f"""
-FINANCIAL AGENT EVALUATION REPORT
-{'='*60}
 
-EXPERIMENT DETAILS:
-  • Experiment: {self.experiment_name}
-          • Dataset: {self.dataset_name} ({len(FINANCIAL_EVALUATION_DATASET)} examples)
-  • Evaluators: {len(self.evaluators)} custom LLM-as-judge evaluators
-  • Model: {config.AGENT_MODEL}
-
-LANGSMITH LINKS:
-  • Experiment URL: {results.get('experiment_url', 'URL not available')}
-  • Project: {config.LANGSMITH_PROJECT}
-
-KEY INSIGHTS:
-"""
-        for insight in insights:
-            report += f"  • {insight}\n"
-
-        report += f"""
-EVALUATION CRITERIA:
-  • Financial Accuracy: Numerical facts and calculations
-  • Logical Reasoning: Coherence and soundness of analysis
-  • Completeness: All aspects of questions addressed
-  • Hallucination Check: No unsupported claims
-  • Trajectory Quality: Appropriate tool usage patterns
-
-TECHNICAL ARCHITECTURE:
-  • ReAct Agent with financial tools (data API, calculator, search)
-  • LLM-as-judge evaluators using {config.EVALUATOR_MODEL}
-  • Trajectory analysis for tool usage optimization
-  • Comprehensive test coverage across financial scenarios
-
-DEMO HIGHLIGHTS:
-  • Real-time financial data integration
-  • Multi-step reasoning with tool orchestration
-  • Advanced evaluation metrics beyond simple accuracy
-  • Production-ready evaluation framework
-  • Scalable to larger datasets and continuous monitoring
-
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-"""
-        return report
 
     def run_full_demo(self) -> Dict[str, Any]:
         """Run the complete evaluation demo from start to finish."""
@@ -265,17 +252,15 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             # Step 4: Generate insights
             insights = self.identify_insights(df)
 
-            # Step 5: Create comprehensive report
-            report = self.generate_report(results, df, insights)
-
-            # Step 6: Display final summary
+            # Step 5: Display final summary
             elapsed_time = time.time() - start_time
 
             print("\n" + "DEMO COMPLETED SUCCESSFULLY!")
             print("="*60)
             print(f"Total Runtime: {elapsed_time:.1f} seconds")
             print(f"View Full Results: {results.get('experiment_url', 'URL not available')}")
-            print(f"Examples Evaluated: {len(FINANCIAL_EVALUATION_DATASET)}")
+            examples_run = self.max_examples if self.max_examples else len(FINANCIAL_EVALUATION_DATASET)
+            print(f"Examples Evaluated: {examples_run}")
             print(f"Evaluation Metrics: {len(self.evaluators)}")
 
             print("\nEXECUTIVE SUMMARY:")
@@ -287,7 +272,6 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 "experiment_url": results.get('experiment_url', 'URL not available'),
                 "dataset_id": dataset_id,
                 "insights": insights,
-                "report": report,
                 "runtime": elapsed_time,
                 "dataframe": df
             }
@@ -300,24 +284,7 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 "runtime": time.time() - start_time
             }
 
-def quick_agent_test():
-    """Quick test of the financial agent before full evaluation."""
-    print("\nQUICK AGENT TEST")
-    print("="*40)
 
-    test_query = "What is Apple's current stock price and how has it performed this year?"
-    print(f"Query: {test_query}")
-
-    try:
-        result = run_financial_agent({"question": test_query})
-        print(f"\nAgent Response:")
-        print(f"  {result['response'][:200]}...")
-        print(f"\nTools Used: {result.get('unique_tools_used', [])}")
-        print(f"Total Tool Calls: {result.get('total_tool_calls', 0)}")
-        return True
-    except Exception as e:
-        print(f"Agent test failed: {e}")
-        return False
 
 if __name__ == "__main__":
     """
@@ -331,31 +298,42 @@ if __name__ == "__main__":
     5. Production-ready evaluation framework
     """
 
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Financial Agent Evaluation Demo')
+    parser.add_argument('--max-examples', type=int, default=3,
+                        help='Maximum number of examples to run (default: 3 for cost control)')
+    parser.add_argument('--all', action='store_true',
+                        help='Run all examples (ignores --max-examples)')
+    args = parser.parse_args()
+
+    # Determine how many examples to run (priority: CLI args > env var > default)
+    if args.all:
+        MAX_EXAMPLES = None
+        print("Running ALL examples (full evaluation)")
+    elif hasattr(config, 'MAX_EXAMPLES') and config.MAX_EXAMPLES is not None:
+        MAX_EXAMPLES = config.MAX_EXAMPLES
+        print(f"COST CONTROL (from env): Running {MAX_EXAMPLES} out of {len(FINANCIAL_EVALUATION_DATASET)} examples")
+    else:
+        MAX_EXAMPLES = args.max_examples
+        print(f"COST CONTROL: Running {MAX_EXAMPLES} out of {len(FINANCIAL_EVALUATION_DATASET)} examples")
+
     print("LangChain Interview Demo: Financial Agent Evaluation with LangSmith")
     print("="*80)
+    print(f"Examples to evaluate: {MAX_EXAMPLES if MAX_EXAMPLES else len(FINANCIAL_EVALUATION_DATASET)}")
+    print("="*80)
 
-    # Quick agent test first
-    if not quick_agent_test():
-        print("Agent test failed. Please check configuration.")
-        exit(1)
-
-    # Run full demo
-    demo = FinancialAgentEvaluationDemo()
+    # Run demo with cost control
+    demo = FinancialAgentEvaluationDemo(max_examples=MAX_EXAMPLES)
     results = demo.run_full_demo()
 
     if results["success"]:
         print(f"\nDemo completed successfully!")
         print(f"Share this URL with your interviewer: {results.get('experiment_url', 'URL not available')}")
 
-        # Save report to file
-        with open(f"evaluation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md", "w") as f:
-            f.write(results["report"])
-        print(f"Report saved to evaluation_report_*.md")
-
     else:
         print(f"Demo failed: {results['error']}")
         print("Check your API keys and configuration in config.py")
 
     print("\n" + "="*80)
-    print("Ready for your LangChain interview presentation!")
+    print("Complete")
     print("="*80)

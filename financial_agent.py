@@ -7,7 +7,6 @@ from typing import Dict, List, Any, Optional
 import json
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
-from langchain_openai import ChatOpenAI
 from langsmith import traceable, Client
 from financial_tools import FINANCIAL_TOOLS
 import config
@@ -25,16 +24,12 @@ class FinancialAgent:
     """
 
     def __init__(self):
-        """Initialize the financial agent with tools and LLM."""
+        """Initialize the financial agent with modern structured output tools."""
         self.tools = FINANCIAL_TOOLS
         self.tool_calls_log = []  # Track tool usage for evaluation
 
-        # Initialize LLM with LangSmith tracing
-        self.llm = ChatOpenAI(
-            model=config.AGENT_MODEL,
-            temperature=config.TEMPERATURE,
-            api_key=config.OPENAI_API_KEY
-        )
+        # Initialize LLM with LangSmith tracing using factory function
+        self.llm = config.get_chat_model()
 
         # Create agent with enhanced prompt
         self.agent = self._create_agent()
@@ -45,7 +40,8 @@ class FinancialAgent:
             tools=self.tools,
             verbose=True,
             handle_parsing_errors=True,
-            max_iterations=10,
+            max_iterations=config.AGENT_MAX_ITERATIONS,  # Configurable max iterations
+            max_execution_time=config.AGENT_MAX_EXECUTION_TIME,  # Configurable timeout
             return_intermediate_steps=True
         )
 
@@ -57,10 +53,15 @@ class FinancialAgent:
 AVAILABLE TOOLS:
 {tools}
 
-TOOL USAGE GUIDELINES:
-- For stock data: Use financial_data_api with appropriate parameters
-- For calculations: Use financial_calculator for CAGR, ratios, projections
+FINANCIAL TOOL USAGE GUIDELINES:
+- For current stock prices: Use get_stock_price(symbol) - returns structured StockPriceData
+- For company information: Use get_company_info(symbol) - returns structured CompanyInfo
+- For compound growth: Use calculate_compound_growth(principal, annual_rate, years)
+- For financial ratios: Use calculate_financial_ratio(numerator, denominator, ratio_type)
 - For recent news/events: Use tavily_search_results_json
+- STRUCTURED OUTPUT: Financial tools return validated Pydantic models for reliability
+- MINIMIZE TOOL CALLS: Plan your tool usage efficiently before starting
+- Combine multiple data points in single tool calls when possible
 - Always verify financial figures with reliable sources
 - Show your reasoning step-by-step
 
@@ -152,6 +153,10 @@ Thought:{agent_scratchpad}"""
             print(f"Tools Used: {', '.join(analysis_result['unique_tools_used'])}")
             print(f"Total Tool Calls: {analysis_result['total_tool_calls']}")
 
+            # Performance warning if approaching limits
+            if analysis_result['total_tool_calls'] >= config.AGENT_MAX_ITERATIONS * 0.8:
+                print(f"⚠️  Warning: High tool usage ({analysis_result['total_tool_calls']}/{config.AGENT_MAX_ITERATIONS}) - consider optimizing query")
+
             return analysis_result
 
         except Exception as e:
@@ -175,7 +180,7 @@ def run_financial_agent(inputs: Dict[str, str]) -> Dict[str, Any]:
     Expected input format: {"question": "financial query"}
     Returns format: {"response": "answer", "tool_trajectory": [...]}
     """
-    agent = FinancialAgent()
+    agent = FinancialAgent()  # Uses modern structured tools by default
     query = inputs.get("question", "")
 
     if not query:

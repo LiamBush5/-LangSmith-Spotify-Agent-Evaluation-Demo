@@ -97,6 +97,19 @@ Thought:{agent_scratchpad}"""
 
         return create_react_agent(self.llm, self.tools, prompt)
 
+    def _serialize_tool_output(self, output: Any) -> Any:
+        """Convert Pydantic models to dictionaries for LangSmith compatibility."""
+        from pydantic import BaseModel
+
+        if isinstance(output, BaseModel):
+            return output.model_dump()
+        elif isinstance(output, list):
+            return [self._serialize_tool_output(item) for item in output]
+        elif isinstance(output, dict):
+            return {k: self._serialize_tool_output(v) for k, v in output.items()}
+        else:
+            return output
+
     @traceable
     def analyze_query(self, query: str) -> Dict[str, Any]:
         """
@@ -133,13 +146,17 @@ Thought:{agent_scratchpad}"""
                     tool_input = action.tool_input if hasattr(action, 'tool_input') else ""
 
                     tool_trajectory.append(tool_name)
+
+                    # Serialize the observation for LangSmith compatibility
+                    serialized_observation = self._serialize_tool_output(observation)
+
                     reasoning_steps.append({
                         "tool": tool_name,
                         "input": str(tool_input),
-                        "output": str(observation)[:200] + "..." if len(str(observation)) > 200 else str(observation)
+                        "output": str(serialized_observation)[:200] + "..." if len(str(serialized_observation)) > 200 else str(serialized_observation)
                     })
 
-            # Compile comprehensive result
+            # Compile comprehensive result - ensure all outputs are serializable
             analysis_result = {
                 "response": response,
                 "tool_trajectory": tool_trajectory,
@@ -194,13 +211,17 @@ def run_financial_agent(inputs: Dict[str, str]) -> Dict[str, Any]:
 
     result = agent.analyze_query(query)
 
+    # Ensure all outputs are serializable for LangSmith
+    serialized_result = agent._serialize_tool_output(result)
+
     # Return in expected format for evaluation
     return {
-        "response": result["response"],
-        "tool_trajectory": result["tool_trajectory"],
-        "reasoning_steps": result["reasoning_steps"],
-        "total_tool_calls": result["total_tool_calls"],
-        "unique_tools_used": result["unique_tools_used"]
+        "response": serialized_result["response"],
+        "tool_trajectory": serialized_result["tool_trajectory"],
+        "reasoning_steps": serialized_result["reasoning_steps"],
+        "total_tool_calls": serialized_result["total_tool_calls"],
+        "unique_tools_used": serialized_result["unique_tools_used"],
+        "query": serialized_result["query"]
     }
 
 if __name__ == "__main__":

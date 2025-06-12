@@ -1,7 +1,7 @@
 """
 Advanced Financial Tools for LangChain Agent
 These tools provide real financial data access and calculations.
-Enhanced with modern LangChain patterns (2024-2025).
+Enhanced with modern LangChain patterns (2024-2025) with robust Pydantic v2 input validation.
 """
 import yfinance as yf
 import pandas as pd
@@ -9,11 +9,106 @@ import numpy as np
 from typing import Dict, List, Union, Optional, Literal, Any
 from langchain_core.tools import BaseTool, tool
 from langchain_tavily import TavilySearch
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 import json
 import traceback
+import re
 from datetime import datetime, timedelta
 import config
+
+# Pydantic v2 Input Models for robust input handling
+def parse_malformed_dict_string(value: str) -> dict:
+    """Helper function to safely parse malformed dict strings from ReAct agent."""
+    try:
+        if value.startswith('{') and value.endswith('}'):
+            return eval(value)
+    except:
+        pass
+    return {}
+
+class StockSymbolInput(BaseModel):
+    """Input model for stock symbol with flexible parsing."""
+    symbol: str = Field(description="Stock ticker symbol (e.g., 'AAPL', 'TSLA', 'NVDA')")
+
+    @field_validator('symbol', mode='before')
+    @classmethod
+    def parse_symbol(cls, v):
+        """Parse symbol from various input formats."""
+        if isinstance(v, dict):
+            # Handle dict inputs like {'symbol': 'AAPL'} or {'SYMBOL': 'AAPL'}
+            for key in ['symbol', 'SYMBOL', 'ticker', 'TICKER']:
+                if key in v:
+                    return str(v[key]).upper()
+            # Fallback to first value if no standard key found
+            return str(list(v.values())[0]).upper() if v else 'UNKNOWN'
+
+        if isinstance(v, str):
+            # Handle malformed dict strings like "{'SYMBOL': 'AAPL'}"
+            parsed_dict = parse_malformed_dict_string(v)
+            if parsed_dict:
+                return cls.parse_symbol(parsed_dict)
+            # Regular string input
+            return v.upper()
+
+        return str(v).upper()
+
+class FinancialHistoryInput(BaseModel):
+    """Input model for financial history with flexible parsing."""
+    symbol: str = Field(description="Stock ticker symbol")
+    period: str = Field(default="1y", description="Time period ('1y', '2y', '5y', 'max')")
+
+    @model_validator(mode='before')
+    @classmethod
+    def parse_combined_input(cls, values):
+        """Handle malformed string inputs like "{'SYMBOL': 'MSFT', 'PERIOD': '1Y'}"."""
+        if isinstance(values, str):
+            parsed_dict = parse_malformed_dict_string(values)
+            if parsed_dict:
+                result = {}
+                # Extract symbol
+                for key in ['symbol', 'SYMBOL', 'ticker', 'TICKER']:
+                    if key in parsed_dict:
+                        result['symbol'] = str(parsed_dict[key]).upper()
+                        break
+                # Extract period
+                for key in ['period', 'PERIOD', 'timeframe', 'TIMEFRAME']:
+                    if key in parsed_dict:
+                        result['period'] = str(parsed_dict[key]).lower()
+                        break
+                # Set defaults if not found
+                if 'symbol' not in result and parsed_dict:
+                    result['symbol'] = str(list(parsed_dict.values())[0]).upper()
+                if 'period' not in result:
+                    result['period'] = '1y'
+                return result
+        return values
+
+    @field_validator('symbol', mode='before')
+    @classmethod
+    def parse_symbol(cls, v):
+        """Parse symbol from various input formats."""
+        return str(v).upper()
+
+    @field_validator('period', mode='before')
+    @classmethod
+    def parse_period(cls, v):
+        """Parse period from various input formats."""
+        return str(v).lower()
+
+class CompoundGrowthInput(BaseModel):
+    """Input model for compound growth calculation."""
+    principal: float = Field(description="Initial investment amount in dollars")
+    annual_rate: float = Field(description="Annual growth rate as a decimal (e.g., 0.07 for 7%)")
+    years: float = Field(description="Number of years to compound")
+
+class FinancialRatioInput(BaseModel):
+    """Input model for financial ratio calculation."""
+    numerator: float = Field(description="Numerator value")
+    denominator: float = Field(description="Denominator value")
+    ratio_type: Literal["pe", "debt_to_equity", "current", "roe", "generic"] = Field(
+        default="generic",
+        description="Type of financial ratio"
+    )
 
 # Modern Pydantic schemas for structured input/output
 class StockPriceData(BaseModel):
@@ -74,19 +169,25 @@ class FinancialHistoryResult(BaseModel):
 
 # Modern function-based tools using @tool decorator
 @tool
-def get_stock_price(symbol: str) -> StockPriceData:
+def get_stock_price(symbol: Union[str, Dict[str, Any]]) -> StockPriceData:
     """
     Get current stock price and market data for a publicly traded company.
 
     Args:
-        symbol: Stock ticker symbol (e.g., 'AAPL', 'TSLA', 'NVDA')
+        symbol: Stock ticker symbol (e.g., 'AAPL', 'TSLA', 'NVDA') or dict with symbol
 
     Returns:
         Structured stock price data including current price, market cap, and ratios
     """
     try:
-        symbol = symbol.upper()
-        ticker = yf.Ticker(symbol)
+        # Use Pydantic model for robust input parsing
+        if isinstance(symbol, str):
+            input_data = StockSymbolInput(symbol=symbol)
+        else:
+            input_data = StockSymbolInput.model_validate(symbol)
+
+        symbol_str = input_data.symbol
+        ticker = yf.Ticker(symbol_str)
         info = ticker.info
 
         current_price = info.get('currentPrice', info.get('regularMarketPrice'))
@@ -119,7 +220,7 @@ def get_stock_price(symbol: str) -> StockPriceData:
         """.strip()
 
         return StockPriceData(
-            symbol=symbol,
+            symbol=symbol_str,
             current_price=current_price,
             market_cap=market_cap,
             pe_ratio=pe_ratio,
@@ -129,31 +230,39 @@ def get_stock_price(symbol: str) -> StockPriceData:
         )
 
     except Exception as e:
+        # Handle error case where symbol_str might not be defined
+        error_symbol = symbol_str if 'symbol_str' in locals() else str(symbol)
         return StockPriceData(
-            symbol=symbol,
+            symbol=error_symbol,
             current_price=None,
             market_cap=None,
             pe_ratio=None,
             week_52_high=None,
             week_52_low=None,
-            formatted_summary=f"Error retrieving data for {symbol}: {str(e)}",
+            formatted_summary=f"Error retrieving data for {error_symbol}: {str(e)}",
             error=str(e)
         )
 
 @tool
-def get_company_info(symbol: str) -> CompanyInfo:
+def get_company_info(symbol: Union[str, Dict[str, Any]]) -> CompanyInfo:
     """
     Get detailed company information for a publicly traded company.
 
     Args:
-        symbol: Stock ticker symbol (e.g., 'AAPL', 'MSFT')
+        symbol: Stock ticker symbol (e.g., 'AAPL', 'MSFT') or dict with symbol
 
     Returns:
         Structured company information including name, sector, industry details
     """
     try:
-        symbol = symbol.upper()
-        ticker = yf.Ticker(symbol)
+        # Use Pydantic model for robust input parsing
+        if isinstance(symbol, str):
+            input_data = StockSymbolInput(symbol=symbol)
+        else:
+            input_data = StockSymbolInput.model_validate(symbol)
+
+        symbol_str = input_data.symbol
+        ticker = yf.Ticker(symbol_str)
         info = ticker.info
 
         business_summary = info.get('longBusinessSummary', '')
@@ -161,7 +270,7 @@ def get_company_info(symbol: str) -> CompanyInfo:
             business_summary = business_summary[:300] + "..."
 
         return CompanyInfo(
-            symbol=symbol,
+            symbol=symbol_str,
             name=info.get('longName'),
             sector=info.get('sector'),
             industry=info.get('industry'),
@@ -171,28 +280,30 @@ def get_company_info(symbol: str) -> CompanyInfo:
         )
 
     except Exception as e:
+        # Handle error case where symbol_str might not be defined
+        error_symbol = symbol_str if 'symbol_str' in locals() else str(symbol)
         return CompanyInfo(
-            symbol=symbol,
+            symbol=error_symbol,
             name=None,
             sector=None,
             industry=None,
             country=None,
             employees=None,
-            business_summary=f"Error retrieving company info for {symbol}: {str(e)}",
+            business_summary=f"Error retrieving company info for {error_symbol}: {str(e)}",
             error=str(e)
         )
 
 @tool
 def calculate_compound_growth(
-    principal: float,
-    annual_rate: float,
-    years: float
+    principal: Union[float, Dict[str, Any]],
+    annual_rate: float = None,
+    years: float = None
 ) -> CompoundGrowthResult:
     """
     Calculate compound growth and future value of an investment.
 
     Args:
-        principal: Initial investment amount in dollars
+        principal: Initial investment amount in dollars or dict with all parameters
         annual_rate: Annual growth rate as a decimal (e.g., 0.07 for 7%)
         years: Number of years to compound
 
@@ -200,11 +311,25 @@ def calculate_compound_growth(
         CompoundGrowthResult object with future value, total growth, and return percentage
     """
     try:
-        if years <= 0 or principal <= 0:
-            return CompoundGrowthResult(
+        # Use Pydantic model for robust input parsing
+        if isinstance(principal, dict):
+            input_data = CompoundGrowthInput.model_validate(principal)
+        else:
+            input_data = CompoundGrowthInput(
                 principal=principal,
                 annual_rate=annual_rate,
-                years=years,
+                years=years
+            )
+
+        principal_val = input_data.principal
+        annual_rate_val = input_data.annual_rate
+        years_val = input_data.years
+
+        if years_val <= 0 or principal_val <= 0:
+            return CompoundGrowthResult(
+                principal=principal_val,
+                annual_rate=annual_rate_val,
+                years=years_val,
                 future_value=0.0,
                 total_growth=0.0,
                 total_return_percent=0.0,
@@ -212,22 +337,22 @@ def calculate_compound_growth(
                 error="Principal and years must be positive numbers"
             )
 
-        future_value = principal * (1 + annual_rate) ** years
-        total_growth = future_value - principal
-        total_return_pct = (future_value / principal - 1) * 100
+        future_value = principal_val * (1 + annual_rate_val) ** years_val
+        total_growth = future_value - principal_val
+        total_return_pct = (future_value / principal_val - 1) * 100
 
         return CompoundGrowthResult(
-            principal=principal,
-            annual_rate=annual_rate,
-            years=years,
+            principal=principal_val,
+            annual_rate=annual_rate_val,
+            years=years_val,
             future_value=round(future_value, 2),
             total_growth=round(total_growth, 2),
             total_return_percent=round(total_return_pct, 2),
             formatted_summary=f"""
 Compound Growth Calculation:
-• Initial Investment: ${principal:,.2f}
-• Annual Return Rate: {annual_rate*100:.2f}%
-• Time Period: {years} years
+• Initial Investment: ${principal_val:,.2f}
+• Annual Return Rate: {annual_rate_val*100:.2f}%
+• Time Period: {years_val} years
 • Future Value: ${future_value:,.2f}
 • Total Growth: ${total_growth:,.2f}
 • Total Return: {total_return_pct:.2f}%
@@ -236,10 +361,15 @@ Compound Growth Calculation:
         )
 
     except Exception as e:
+        # Handle error case where values might not be defined
+        error_principal = principal_val if 'principal_val' in locals() else (principal if isinstance(principal, (int, float)) else 0)
+        error_rate = annual_rate_val if 'annual_rate_val' in locals() else (annual_rate if annual_rate else 0)
+        error_years = years_val if 'years_val' in locals() else (years if years else 0)
+
         return CompoundGrowthResult(
-            principal=principal,
-            annual_rate=annual_rate,
-            years=years,
+            principal=error_principal,
+            annual_rate=error_rate,
+            years=error_years,
             future_value=0.0,
             total_growth=0.0,
             total_return_percent=0.0,
@@ -332,29 +462,41 @@ Assessment: {info['context']}
 
 @tool
 def get_financial_history(
-    symbol: str,
+    symbol: Union[str, Dict[str, Any]],
     period: str = "1y"
 ) -> FinancialHistoryResult:
     """
     Get historical stock performance and calculate key metrics.
 
     Args:
-        symbol: Stock ticker symbol (e.g., 'AAPL', 'MSFT')
+        symbol: Stock ticker symbol (e.g., 'AAPL', 'MSFT') or dict with symbol and period
         period: Time period ('1y', '2y', '5y', 'max')
 
     Returns:
         FinancialHistoryResult object with historical performance metrics
     """
     try:
-        symbol = symbol.upper()
-        ticker = yf.Ticker(symbol)
-        hist = ticker.history(period=period)
+        # Use Pydantic model for robust input parsing
+        if isinstance(symbol, str) and symbol.startswith('{'):
+            # Handle malformed string input like "{'SYMBOL': 'MSFT', 'PERIOD': '1Y'}"
+            input_data = FinancialHistoryInput.model_validate(symbol)
+        elif isinstance(symbol, str):
+            # Normal string input
+            input_data = FinancialHistoryInput(symbol=symbol, period=period)
+        else:
+            # Dict input
+            input_data = FinancialHistoryInput.model_validate(symbol)
+
+        symbol_str = input_data.symbol
+        period_str = input_data.period
+        ticker = yf.Ticker(symbol_str)
+        hist = ticker.history(period=period_str)
 
         if hist.empty:
             return FinancialHistoryResult(
-                symbol=symbol,
-                period=period,
-                error=f"No historical data available for {symbol}"
+                symbol=symbol_str,
+                period=period_str,
+                error=f"No historical data available for {symbol_str}"
             )
 
         # Calculate performance metrics
@@ -375,8 +517,8 @@ def get_financial_history(
         max_drawdown = drawdown.min()
 
         return FinancialHistoryResult(
-            symbol=symbol,
-            period=period,
+            symbol=symbol_str,
+            period=period_str,
             start_price=round(start_price, 2),
             end_price=round(end_price, 2),
             total_return_percent=round(total_return, 2),
@@ -385,7 +527,7 @@ def get_financial_history(
             max_drawdown_percent=round(max_drawdown, 2),
             trading_days=len(hist),
             formatted_summary=f"""
-{symbol} Historical Performance ({period}):
+{symbol_str} Historical Performance ({period_str}):
 • Start Price: ${start_price:.2f}
 • End Price: ${end_price:.2f}
 • Total Return: {total_return:.2f}%
@@ -397,10 +539,13 @@ def get_financial_history(
         )
 
     except Exception as e:
+        # Handle error case where symbol_str might not be defined
+        error_symbol = symbol_str if 'symbol_str' in locals() else str(symbol)
+        error_period = period_str if 'period_str' in locals() else str(period)
         return FinancialHistoryResult(
-            symbol=symbol,
-            period=period,
-            error=f"Error retrieving historical data for {symbol}: {str(e)}"
+            symbol=error_symbol,
+            period=error_period,
+            error=f"Error retrieving historical data for {error_symbol}: {str(e)}"
         )
 
 # Initialize search tool

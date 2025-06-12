@@ -112,6 +112,12 @@ class FinancialAgentEvaluationDemo:
 
             print(f"\nEvaluation completed!")
 
+            # Debug: Print results object to understand what's available
+            print(f"\nDEBUG: Results object type: {type(results)}")
+            print(f"DEBUG: Results object attributes: {dir(results)}")
+            if hasattr(results, '__dict__'):
+                print(f"DEBUG: Results object dict: {vars(results)}")
+
             # Try to get experiment URL - handle different LangSmith versions
             experiment_url = 'URL not available'
             experiment_name = 'Experiment completed'
@@ -124,11 +130,37 @@ class FinancialAgentEvaluationDemo:
             elif hasattr(results, '_experiment_name'):
                 experiment_name = results._experiment_name
                 experiment_url = f"LangSmith project: {config.LANGSMITH_PROJECT}"
+            elif hasattr(results, 'experiment_name'):
+                experiment_name = results.experiment_name
+                # Try to construct URL from experiment name
+                experiment_url = f"https://smith.langchain.com/o/{config.LANGSMITH_PROJECT}/experiments/{experiment_name}"
+            elif hasattr(results, '_results') and len(results._results) > 0:
+                # Extract from the first result's run information
+                first_result = results._results[0]
+                if 'run' in first_result and hasattr(first_result['run'], 'session_id'):
+                    session_id = first_result['run'].session_id
+                    experiment_url = f"https://smith.langchain.com/o/{config.LANGSMITH_PROJECT}/sessions/{session_id}"
+                elif 'example' in first_result and hasattr(first_result['example'], 'link'):
+                    # Use the example link as a fallback
+                    example_link = first_result['example'].link
+                    # Extract the organization ID from the example link
+                    if '/o/' in example_link:
+                        org_part = example_link.split('/o/')[1].split('/')[0]
+                        experiment_url = f"https://smith.langchain.com/o/{org_part}/datasets/{self.dataset_id}"
 
             if hasattr(results, 'experiment_name'):
                 experiment_name = results.experiment_name
             elif hasattr(results, '_experiment_name'):
                 experiment_name = results._experiment_name
+            elif hasattr(results, '_manager') and hasattr(results._manager, 'experiment_name'):
+                experiment_name = results._manager.experiment_name
+                # Try to construct a proper experiment URL
+                if hasattr(results._manager, 'client') and hasattr(results._manager.client, '_get_tenant_id'):
+                    try:
+                        tenant_id = results._manager.client._get_tenant_id()
+                        experiment_url = f"https://smith.langchain.com/o/{tenant_id}/experiments/{experiment_name}"
+                    except:
+                        experiment_url = f"https://smith.langchain.com/experiments/{experiment_name}"
 
             print(f"View results: {experiment_url}")
 

@@ -1,5 +1,5 @@
 """
-🚀 LangSmith Financial Agent Evaluation Demo
+LangSmith Financial Agent Evaluation Demo
 Comprehensive evaluation experiment showcasing advanced agent evaluation capabilities.
 
 This script demonstrates:
@@ -38,35 +38,35 @@ class FinancialAgentEvaluationDemo:
         self.dataset_id = None
         self.evaluators = FINANCIAL_EVALUATORS
 
-        print("🎯 Financial Agent Evaluation Demo Initialized")
-        print(f"📊 Experiment Name: {self.experiment_name}")
-        print(f"🗂️ Dataset: {self.dataset_name}")
-        print(f"⚖️ Evaluators: {[e.__name__ for e in self.evaluators]}")
+        print("Financial Agent Evaluation Demo Initialized")
+        print(f"Experiment Name: {self.experiment_name}")
+        print(f"Dataset: {self.dataset_name}")
+        print(f"Evaluators: {[e.__name__ for e in self.evaluators]}")
 
     def setup_dataset(self) -> str:
         """Create and populate the evaluation dataset."""
         print("\n" + "="*60)
-        print("🗂️ SETTING UP EVALUATION DATASET")
+        print("SETTING UP EVALUATION DATASET")
         print("="*60)
 
         try:
             self.dataset_id = create_langsmith_dataset(self.dataset_name)
-            print(f"✅ Dataset ready: {self.dataset_id}")
+            print(f"Dataset ready: {self.dataset_id}")
             return self.dataset_id
         except Exception as e:
-            print(f"❌ Dataset setup failed: {e}")
+            print(f"Dataset setup failed: {e}")
             raise
 
     def run_evaluation_experiment(self) -> Dict[str, Any]:
         """Run the comprehensive evaluation experiment."""
         print("\n" + "="*60)
-        print("🔬 RUNNING EVALUATION EXPERIMENT")
+        print("RUNNING EVALUATION EXPERIMENT")
         print("="*60)
 
-        print(f"🎯 Target Function: run_financial_agent")
-        print(f"🗂️ Dataset: {self.dataset_name}")
-        print(f"⚖️ Evaluators: {len(self.evaluators)} custom evaluators")
-        print(f"🚀 Max Concurrency: {config.MAX_CONCURRENCY}")
+        print(f"Target Function: run_financial_agent")
+        print(f"Dataset: {self.dataset_name}")
+        print(f"Evaluators: {len(self.evaluators)} custom evaluators")
+        print(f"Max Concurrency: {config.MAX_CONCURRENCY}")
 
         try:
             # Run the evaluation
@@ -79,7 +79,7 @@ class FinancialAgentEvaluationDemo:
                 client=self.client
             )
 
-            print(f"\n✅ Evaluation completed!")
+            print(f"\nEvaluation completed!")
 
             # Try to get experiment URL - handle different LangSmith versions
             experiment_url = 'URL not available'
@@ -99,7 +99,7 @@ class FinancialAgentEvaluationDemo:
             elif hasattr(results, '_experiment_name'):
                 experiment_name = results._experiment_name
 
-            print(f"🔗 View results: {experiment_url}")
+            print(f"View results: {experiment_url}")
 
             return {
                 "experiment_url": experiment_url,
@@ -108,13 +108,13 @@ class FinancialAgentEvaluationDemo:
             }
 
         except Exception as e:
-            print(f"❌ Evaluation failed: {e}")
+            print(f"Evaluation failed: {e}")
             raise
 
     def analyze_results(self, results) -> pd.DataFrame:
         """Analyze and summarize the evaluation results."""
         print("\n" + "="*60)
-        print("📊 ANALYZING EVALUATION RESULTS")
+        print("ANALYZING EVALUATION RESULTS")
         print("="*60)
 
         try:
@@ -125,7 +125,7 @@ class FinancialAgentEvaluationDemo:
             evaluator_columns = [col for col in df.columns if any(eval_name in col for eval_name in
                                 [e.__name__ for e in self.evaluators])]
 
-            print("\n📈 EVALUATION SUMMARY:")
+            print("\nEVALUATION SUMMARY:")
             print("-" * 40)
 
             for eval_name in [e.__name__ for e in self.evaluators]:
@@ -139,7 +139,7 @@ class FinancialAgentEvaluationDemo:
 
             # Category analysis
             if 'outputs.category' in df.columns:
-                print(f"\n📁 PERFORMANCE BY CATEGORY:")
+                print(f"\nPERFORMANCE BY CATEGORY:")
                 print("-" * 40)
                 category_performance = df.groupby('outputs.category').agg({
                     col: 'mean' for col in evaluator_columns if 'score' in col
@@ -148,7 +148,7 @@ class FinancialAgentEvaluationDemo:
 
             # Complexity analysis
             if 'outputs.complexity' in df.columns:
-                print(f"\n⚡ PERFORMANCE BY COMPLEXITY:")
+                print(f"\nPERFORMANCE BY COMPLEXITY:")
                 print("-" * 40)
                 complexity_performance = df.groupby('outputs.complexity').agg({
                     col: 'mean' for col in evaluator_columns if 'score' in col
@@ -158,7 +158,7 @@ class FinancialAgentEvaluationDemo:
             return df
 
         except Exception as e:
-            print(f"❌ Results analysis failed: {e}")
+            print(f"Results analysis failed: {e}")
             return pd.DataFrame()
 
     def identify_insights(self, df: pd.DataFrame) -> List[str]:
@@ -202,39 +202,39 @@ class FinancialAgentEvaluationDemo:
     def generate_report(self, results, df: pd.DataFrame, insights: List[str]) -> str:
         """Generate a comprehensive evaluation report."""
         report = f"""
-🎯 FINANCIAL AGENT EVALUATION REPORT
+FINANCIAL AGENT EVALUATION REPORT
 {'='*60}
 
-📊 EXPERIMENT DETAILS:
+EXPERIMENT DETAILS:
   • Experiment: {self.experiment_name}
           • Dataset: {self.dataset_name} ({len(FINANCIAL_EVALUATION_DATASET)} examples)
   • Evaluators: {len(self.evaluators)} custom LLM-as-judge evaluators
   • Model: {config.AGENT_MODEL}
 
-🔗 LANGSMITH LINKS:
+LANGSMITH LINKS:
   • Experiment URL: {results.get('experiment_url', 'URL not available')}
   • Project: {config.LANGSMITH_PROJECT}
 
-📈 KEY INSIGHTS:
+KEY INSIGHTS:
 """
         for insight in insights:
             report += f"  • {insight}\n"
 
         report += f"""
-⚖️ EVALUATION CRITERIA:
+EVALUATION CRITERIA:
   • Financial Accuracy: Numerical facts and calculations
   • Logical Reasoning: Coherence and soundness of analysis
   • Completeness: All aspects of questions addressed
   • Hallucination Check: No unsupported claims
   • Trajectory Quality: Appropriate tool usage patterns
 
-🛠️ TECHNICAL ARCHITECTURE:
+TECHNICAL ARCHITECTURE:
   • ReAct Agent with financial tools (data API, calculator, search)
   • LLM-as-judge evaluators using {config.EVALUATOR_MODEL}
   • Trajectory analysis for tool usage optimization
   • Comprehensive test coverage across financial scenarios
 
-💡 DEMO HIGHLIGHTS:
+DEMO HIGHLIGHTS:
   • Real-time financial data integration
   • Multi-step reasoning with tool orchestration
   • Advanced evaluation metrics beyond simple accuracy
@@ -247,7 +247,7 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
     def run_full_demo(self) -> Dict[str, Any]:
         """Run the complete evaluation demo from start to finish."""
-        print("\n" + "🚀" + " STARTING COMPREHENSIVE FINANCIAL AGENT EVALUATION DEMO " + "🚀")
+        print("\n" + "STARTING COMPREHENSIVE FINANCIAL AGENT EVALUATION DEMO")
         print("="*80)
 
         start_time = time.time()
@@ -271,14 +271,14 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             # Step 6: Display final summary
             elapsed_time = time.time() - start_time
 
-            print("\n" + "🎉" + " DEMO COMPLETED SUCCESSFULLY! " + "🎉")
+            print("\n" + "DEMO COMPLETED SUCCESSFULLY!")
             print("="*60)
-            print(f"⏱️ Total Runtime: {elapsed_time:.1f} seconds")
-            print(f"🔗 View Full Results: {results.get('experiment_url', 'URL not available')}")
-            print(f"📊 Examples Evaluated: {len(FINANCIAL_EVALUATION_DATASET)}")
-            print(f"⚖️ Evaluation Metrics: {len(self.evaluators)}")
+            print(f"Total Runtime: {elapsed_time:.1f} seconds")
+            print(f"View Full Results: {results.get('experiment_url', 'URL not available')}")
+            print(f"Examples Evaluated: {len(FINANCIAL_EVALUATION_DATASET)}")
+            print(f"Evaluation Metrics: {len(self.evaluators)}")
 
-            print("\n📋 EXECUTIVE SUMMARY:")
+            print("\nEXECUTIVE SUMMARY:")
             for insight in insights[:5]:  # Top 5 insights
                 print(f"  • {insight}")
 
@@ -293,7 +293,7 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             }
 
         except Exception as e:
-            print(f"\n❌ Demo failed: {e}")
+            print(f"\nDemo failed: {e}")
             return {
                 "success": False,
                 "error": str(e),
@@ -302,7 +302,7 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 def quick_agent_test():
     """Quick test of the financial agent before full evaluation."""
-    print("\n🧪 QUICK AGENT TEST")
+    print("\nQUICK AGENT TEST")
     print("="*40)
 
     test_query = "What is Apple's current stock price and how has it performed this year?"
@@ -310,18 +310,18 @@ def quick_agent_test():
 
     try:
         result = run_financial_agent({"question": test_query})
-        print(f"\n✅ Agent Response:")
+        print(f"\nAgent Response:")
         print(f"  {result['response'][:200]}...")
-        print(f"\n🛠️ Tools Used: {result.get('unique_tools_used', [])}")
-        print(f"🔗 Total Tool Calls: {result.get('total_tool_calls', 0)}")
+        print(f"\nTools Used: {result.get('unique_tools_used', [])}")
+        print(f"Total Tool Calls: {result.get('total_tool_calls', 0)}")
         return True
     except Exception as e:
-        print(f"❌ Agent test failed: {e}")
+        print(f"Agent test failed: {e}")
         return False
 
 if __name__ == "__main__":
     """
-    🎯 Main execution for the LangSmith Financial Agent Evaluation Demo
+    Main execution for the LangSmith Financial Agent Evaluation Demo
 
     This script showcases:
     1. Advanced financial agent with multiple tools
@@ -331,12 +331,12 @@ if __name__ == "__main__":
     5. Production-ready evaluation framework
     """
 
-    print("🎯 LangChain Interview Demo: Financial Agent Evaluation with LangSmith")
+    print("LangChain Interview Demo: Financial Agent Evaluation with LangSmith")
     print("="*80)
 
     # Quick agent test first
     if not quick_agent_test():
-        print("❌ Agent test failed. Please check configuration.")
+        print("Agent test failed. Please check configuration.")
         exit(1)
 
     # Run full demo
@@ -344,18 +344,18 @@ if __name__ == "__main__":
     results = demo.run_full_demo()
 
     if results["success"]:
-        print(f"\n🎉 Demo completed successfully!")
-        print(f"🔗 Share this URL with your interviewer: {results.get('experiment_url', 'URL not available')}")
+        print(f"\nDemo completed successfully!")
+        print(f"Share this URL with your interviewer: {results.get('experiment_url', 'URL not available')}")
 
         # Save report to file
         with open(f"evaluation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md", "w") as f:
             f.write(results["report"])
-        print(f"📄 Report saved to evaluation_report_*.md")
+        print(f"Report saved to evaluation_report_*.md")
 
     else:
-        print(f"❌ Demo failed: {results['error']}")
-        print("🔧 Check your API keys and configuration in config.py")
+        print(f"Demo failed: {results['error']}")
+        print("Check your API keys and configuration in config.py")
 
     print("\n" + "="*80)
-    print("🚀 Ready for your LangChain interview presentation!")
+    print("Ready for your LangChain interview presentation!")
     print("="*80)

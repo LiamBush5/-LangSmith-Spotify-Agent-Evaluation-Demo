@@ -61,6 +61,7 @@ python run_evaluation.py
 ### 3. View Results
 
 The script will output:
+
 - **LangSmith Experiment URL** - Share this with your interviewer
 - **Performance Summary** with metrics breakdown
 - **Detailed Report** saved as markdown file
@@ -83,26 +84,31 @@ The script will output:
 ### Evaluation Metrics
 
 #### Financial Accuracy
+
 - Numerical facts and calculations correctness
 - Financial methodology soundness
 - Data consistency validation
 
 #### Logical Reasoning
+
 - Coherence of reasoning steps
 - Logical flow from question to answer
 - Appropriate assumptions and conclusions
 
 #### Completeness
+
 - All question aspects addressed
 - Sufficient detail and context provided
 - No missing critical information
 
 #### Hallucination Detection
+
 - No unsupported financial claims
 - Consistency with reasoning process
 - Realistic market data validation
 
 #### Trajectory Analysis
+
 - Appropriate tool selection and sequence
 - Efficiency of tool usage
 - Expected vs actual tool patterns
@@ -110,18 +116,21 @@ The script will output:
 ## Technical Highlights
 
 ### 1. Technical Sophistication
+
 - **ReAct Agent** with complex tool orchestration
 - **LLM-as-Judge** evaluation using GPT-4
 - **Trajectory Analysis** beyond simple accuracy metrics
 - **Real-time Data** integration with financial APIs
 
 ### 2. Production Readiness
+
 - **Deterministic Evaluation** (temperature=0)
 - **Error Handling** and fallback parsing
 - **Scalable Architecture** with concurrency control
 - **CI Integration** ready with pytest compatibility
 
 ### 3. Business Value
+
 - **Financial Domain** expertise and realistic scenarios
 - **Multi-criteria Evaluation** framework
 - **Regression Testing** capabilities
@@ -157,6 +166,7 @@ EVALUATION CRITERIA:
 ## System Capabilities
 
 ### Core Functionality
+
 1. **Advanced LangSmith Integration** - Custom evaluators, trajectory analysis, advanced metrics
 2. **Sophisticated Agent Architecture** - Multi-tool orchestration, ReAct reasoning, error handling
 3. **Financial Domain Implementation** - Realistic scenarios, proper calculations, industry knowledge
@@ -164,6 +174,7 @@ EVALUATION CRITERIA:
 5. **Innovative Evaluation Methods** - Beyond accuracy to reasoning quality and tool efficiency
 
 ### Technical Implementation
+
 - **LLM-as-Judge Implementation** with robust fallback parsing
 - **Trajectory Evaluation Algorithm** using longest common subsequence
 - **Multi-criteria Scoring** with weighted combinations
@@ -189,16 +200,13 @@ financial-agent-demo/
 ### Running the System
 
 1. **Setup** - Configure environment variables and install dependencies
-
 2. **Architecture Overview** - Review the agent tools and evaluator types in LangSmith UI
-
 3. **Live Execution** - Run examples end-to-end, observe trace and evaluator outputs
-
 4. **Results Analysis** - Examine experiment results, trajectory analysis, performance breakdown
-
 5. **Production Features** - Explore CI integration, regression testing, monitoring capabilities
 
 ### Key System Features
+
 - **Real-world Financial Scenarios** - Comprehensive test coverage
 - **Multi-dimensional Evaluation** - Beyond accuracy to reasoning quality
 - **Trajectory Analysis** - Tool usage optimization insights
@@ -208,12 +216,14 @@ financial-agent-demo/
 ## Troubleshooting
 
 ### Common Issues
+
 1. **API Key Errors** - Ensure all keys are set in environment
 2. **Model Access** - GPT-4 access required for best results
 3. **Rate Limits** - Adjust `MAX_CONCURRENCY` in config.py
 4. **Import Errors** - Run `pip install -r requirements.txt`
 
 ### Performance Optimization
+
 - Use `MAX_CONCURRENCY=2` for rate-limited accounts
 - Consider `gpt-3.5-turbo` for cost optimization (with some quality trade-off)
 - Cache financial data for repeated evaluations
@@ -221,6 +231,7 @@ financial-agent-demo/
 ## Success Metrics
 
 ### What Great Results Look Like
+
 - **Financial Accuracy**: >90% for calculation-based queries
 - **Logical Reasoning**: >85% for complex analysis questions
 - **Completeness**: >80% addressing all question aspects
@@ -228,6 +239,7 @@ financial-agent-demo/
 - **Trajectory Quality**: >85% for appropriate tool usage
 
 ### Red Flags to Address
+
 - Low trajectory scores (wrong tool selection)
 - High hallucination rates (model reliability issues)
 - Poor reasoning scores (prompt engineering needed)
@@ -235,18 +247,13 @@ financial-agent-demo/
 ## LangSmith Integration
 
 ### SDK Usage
+
 The framework demonstrates comprehensive LangSmith SDK usage:
+
 - Dataset creation and management
 - Experiment execution with custom evaluators
 - Trace analysis and performance monitoring
 - Results aggregation and reporting
-
-### UI Demonstration
-Access your LangSmith UI to show:
-- Dataset visualization with 10 financial scenarios
-- Experiment results with evaluation scores
-- Individual trace analysis showing agent reasoning
-- Comparative analysis across multiple runs
 
 ## Project Summary
 
@@ -257,5 +264,3 @@ This comprehensive evaluation framework provides:
 - **Production Quality** - Scalable, monitorable, CI-ready evaluation pipeline
 - **Innovation** - Trajectory analysis and multi-criteria LLM-as-judge evaluation
 - **Business Value** - Framework for ensuring financial agent reliability at scale
-
-**To get started, run the evaluation and explore the LangSmith experiment results.**

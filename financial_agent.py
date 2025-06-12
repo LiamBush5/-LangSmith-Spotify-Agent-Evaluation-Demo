@@ -148,9 +148,9 @@ Thought:{agent_scratchpad}"""
                 "query": query
             }
 
-            print(f"\n✅ Analysis Complete!")
-            print(f"📊 Tools Used: {', '.join(analysis_result['unique_tools_used'])}")
-            print(f"🔗 Total Tool Calls: {analysis_result['total_tool_calls']}")
+            print(f"\nAnalysis Complete!")
+            print(f"Tools Used: {', '.join(analysis_result['unique_tools_used'])}")
+            print(f"Total Tool Calls: {analysis_result['total_tool_calls']}")
 
             return analysis_result
 
@@ -164,7 +164,7 @@ Thought:{agent_scratchpad}"""
                 "query": query,
                 "error": True
             }
-            print(f"❌ Error: {str(e)}")
+            print(f"Error: {str(e)}")
             return error_result
 
 # Convenience function for evaluation
@@ -217,11 +217,11 @@ if __name__ == "__main__":
 
         result = agent.analyze_query(query)
 
-        print(f"\n📝 Response:\n{result['response']}")
-        print(f"\n🛠️ Tools Used: {result['unique_tools_used']}")
-        print(f"📊 Tool Trajectory: {' → '.join(result['tool_trajectory'])}")
+        print(f"\n Response:\n{result['response']}")
+        print(f"\nTools Used: {result['unique_tools_used']}")
+        print(f"Tool Trajectory: {' → '.join(result['tool_trajectory'])}")
 
         # Wait for user input to continue (comment out for automated testing)
         # input("\nPress Enter to continue to next test...")
 
-    print(f"\n✅ All tests completed! Check LangSmith project '{config.LANGSMITH_PROJECT}' for detailed traces.")
+    print(f"\nAll tests completed! Check LangSmith project '{config.LANGSMITH_PROJECT}' for detailed traces.")

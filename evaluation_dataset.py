@@ -245,7 +245,7 @@ def create_langsmith_dataset(dataset_name: str = "Financial-Agent-Evaluation-Dat
 
 def _validate_expected_tools():
     """Validate that all expected tools in the dataset match available modern tools."""
-    print("🔧 Validating expected tools against available modern tools...")
+    print("Validating expected tools against available modern tools...")
 
     all_expected_tools = set()
     for example in FINANCIAL_EVALUATION_DATASET:
@@ -255,13 +255,13 @@ def _validate_expected_tools():
     extra_tools = set(AVAILABLE_MODERN_TOOLS) - all_expected_tools
 
     if missing_tools:
-        print(f"⚠️  Warning: Expected tools not available: {missing_tools}")
+        print(f"Warning: Expected tools not available: {missing_tools}")
 
     if extra_tools:
-        print(f"💡 Available tools not used in examples: {extra_tools}")
+        print(f"Available tools not used in examples: {extra_tools}")
 
-    print(f"✓ Validation complete. Expected tools: {sorted(all_expected_tools)}")
-    print(f"✓ Available tools: {sorted(AVAILABLE_MODERN_TOOLS)}")
+    print(f"Validation complete. Expected tools: {sorted(all_expected_tools)}")
+    print(f"Available tools: {sorted(AVAILABLE_MODERN_TOOLS)}")
 
 def _create_dataset_splits(dataset_id: str, examples: list):
     """Create dataset splits based on categories and complexity."""
@@ -299,7 +299,7 @@ def _create_dataset_splits(dataset_id: str, examples: list):
         print("You can create splits manually in the LangSmith UI if needed")
 
 if __name__ == "__main__":
-    print(f"🚀 Modern Financial Evaluation Dataset v2.0")
+    print(f"Modern Financial Evaluation Dataset v2.0")
     print(f"Total examples: {len(FINANCIAL_EVALUATION_DATASET)}")
     print(f"Available modern tools: {len(AVAILABLE_MODERN_TOOLS)}")
 
@@ -308,6 +308,6 @@ if __name__ == "__main__":
 
     # Create dataset in LangSmith
     dataset_id = create_langsmith_dataset()
-    print(f"\n✅ Dataset created with ID: {dataset_id}")
-    print(f"🔗 View in LangSmith UI under project: {config.LANGSMITH_PROJECT}")
-    print(f"🎯 Dataset now uses modern structured output tools!")
+    print(f"Dataset created with ID: {dataset_id}")
+    print(f"View in LangSmith UI under project: {config.LANGSMITH_PROJECT}")
+    print(f"Dataset now uses modern structured output tools!")

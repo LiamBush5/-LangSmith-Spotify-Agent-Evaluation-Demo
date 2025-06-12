@@ -46,11 +46,6 @@ if MAX_EXAMPLES is not None:
 AGENT_MAX_ITERATIONS = int(os.getenv("AGENT_MAX_ITERATIONS", "20"))  # Increased from default 10
 AGENT_MAX_EXECUTION_TIME = int(os.getenv("AGENT_MAX_EXECUTION_TIME", "300"))  # 5 minutes
 
-# Gemini paid tier configuration
-if LLM_PROVIDER == "gemini":
-    print(f"🚀 Gemini paid tier - using concurrency: {MAX_CONCURRENCY}")
-    print("💰 Paid plan detected - full performance enabled")
-
 # Validation
 missing_keys = []
 for key in required_keys:
@@ -115,8 +110,8 @@ def verify_langsmith_setup():
 
         client = Client()
 
-        print("🔧 Verifying LangSmith Setup...")
-        print(f"   API Key: {'✓ Present' if LANGSMITH_API_KEY else '✗ Missing'}")
+        print("Verifying LangSmith Setup...")
+        print(f"   API Key: {'Present' if LANGSMITH_API_KEY else 'Missing'}")
         print(f"   Project: {LANGSMITH_PROJECT}")
         print(f"   Tracing: {LANGSMITH_TRACING}")
 
@@ -124,25 +119,25 @@ def verify_langsmith_setup():
         try:
             # Try to list datasets to test connection
             datasets = list(client.list_datasets(limit=1))
-            print("   Connection: ✓ Working")
+            print("   Connection: Working")
 
             # Check project exists or can be created
             try:
                 # This will create the project if it doesn't exist
-                print(f"   Project Access: ✓ Available")
+                print(f"   Project Access: Available")
             except Exception as project_error:
-                print(f"   Project Access: ⚠️ Warning - {project_error}")
+                print(f"   Project Access: Warning - {project_error}")
 
         except Exception as conn_error:
-            print(f"   Connection: ✗ Failed - {conn_error}")
-            print("   💡 Check your LANGSMITH_API_KEY and internet connection")
+            print(f"   Connection: Failed - {conn_error}")
+            print("   Check your LANGSMITH_API_KEY and internet connection")
             return False
 
-        print("✅ LangSmith setup verified successfully!")
+        print("LangSmith setup verified successfully!")
         return True
 
     except Exception as e:
-        print(f"❌ LangSmith verification failed: {e}")
+        print(f"LangSmith verification failed: {e}")
         return False
 
 print("Configuration loaded successfully")

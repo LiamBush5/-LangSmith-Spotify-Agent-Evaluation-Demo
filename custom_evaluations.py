@@ -82,7 +82,7 @@ def safe_structured_evaluation(llm_func, fallback_score: float = 0.0, evaluator_
         return result.model_dump() if hasattr(result, 'model_dump') else result.dict()
     except Exception as e:
         error_msg = f"Structured evaluation failed in {evaluator_name}: {str(e)}"
-        print(f"⚠️ {error_msg}")
+        print(f"{error_msg}")
 
         # Return a safe fallback structure
         return {
@@ -423,28 +423,28 @@ def validate_evaluator_health() -> Dict[str, bool]:
             health_status[evaluator.__name__] = has_key and has_score and has_comment
 
         except Exception as e:
-            print(f"❌ Evaluator {evaluator.__name__} failed health check: {e}")
+            print(f"Evaluator {evaluator.__name__} failed health check: {e}")
             health_status[evaluator.__name__] = False
 
     return health_status
 
 if __name__ == "__main__":
-    print("🚀 Enhanced Custom Evaluators with Structured Output")
-    print(f"📋 Available evaluators: {[e.__name__ for e in FINANCIAL_EVALUATORS]}")
+    print("Enhanced Custom Evaluators with Structured Output")
+    print(f"Available evaluators: {[e.__name__ for e in FINANCIAL_EVALUATORS]}")
 
     # Run health check
-    print("\n🏥 Running evaluator health check...")
+    print("Running evaluator health check...")
     health = validate_evaluator_health()
 
     for name, status in health.items():
-        status_emoji = "✅" if status else "❌"
-        print(f"   {status_emoji} {name}: {'Healthy' if status else 'Unhealthy'}")
+        status_emoji = "Healthy" if status else "Unhealthy"
+        print(f"   {name}: {status_emoji}")
 
     healthy_count = sum(health.values())
     total_count = len(health)
-    print(f"\n📊 Health Summary: {healthy_count}/{total_count} evaluators are healthy")
+    print(f"Health Summary: {healthy_count}/{total_count} evaluators are healthy")
 
     if healthy_count == total_count:
-        print("🎉 All evaluators are ready for use!")
+        print("All evaluators are ready for use!")
     else:
-        print("⚠️ Some evaluators need attention before use.")
+        print("Some evaluators need attention before use.")

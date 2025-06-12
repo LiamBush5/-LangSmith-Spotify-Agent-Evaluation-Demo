@@ -85,7 +85,7 @@ class FinancialAgentEvaluationDemo:
 
             # If cost control is enabled, create a sample of examples
             if self.max_examples:
-                print(f"🎯 Sampling {self.max_examples} random examples from full dataset")
+                print(f"Sampling {self.max_examples} random examples from full dataset")
 
                 # Get all examples from the dataset
                 dataset = self.client.read_dataset(dataset_name=self.dataset_name)
@@ -98,7 +98,7 @@ class FinancialAgentEvaluationDemo:
 
                 # Use the sampled examples directly
                 data_source = sampled_examples
-                print(f"✓ Selected {len(sampled_examples)} examples for evaluation")
+                print(f"Selected {len(sampled_examples)} examples for evaluation")
 
             # Run the evaluation
             results = evaluate(

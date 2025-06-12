@@ -1,28 +1,43 @@
 # LangSmith Financial Agent Evaluation Demo
 
+## 🚀 What's New (2024-2025)
+
+- **Modernized Tooling:** All tools now use structured output with Pydantic models. No manual JSON parsing, no legacy code.
+- **Expanded Dataset:** 15 robust, realistic financial scenarios with complexity levels and better tool coverage.
+- **Legacy Code Removed:** Only modern tools remain (`get_stock_price`, `get_company_info`, `calculate_compound_growth`, `calculate_financial_ratio`, `get_financial_history`, `tavily_search_results_json`).
+- **Agent Architecture Simplified:** No more `use_modern_tools` parameter. Agent always uses the latest tools.
+- **Robust Evaluation:** Automatic tool validation, improved error handling, and comprehensive trajectory analysis.
+- **Best Practices:** Follows 2024-2025 LangChain and LangSmith recommendations for reliability and maintainability.
+
+---
+
 ## Overview
 
-This is a production-ready LangSmith evaluation framework for a sophisticated financial research agent. The system demonstrates comprehensive evaluation capabilities using both the LangSmith SDK and UI.
+This is a production-ready LangSmith evaluation framework for a sophisticated financial research agent. The system demonstrates comprehensive evaluation capabilities using both the LangSmith SDK and UI, with a focus on modern, robust, and maintainable code.
 
 ### Key Features
 
-- **Advanced Multi-Tool Agent** with ReAct reasoning pattern
-- **5 Custom LLM-as-Judge Evaluators** including financial accuracy, logical reasoning, completeness, hallucination detection, and trajectory analysis
-- **Realistic Financial Scenarios** covering stock analysis, CAGR calculations, portfolio modeling, and market research
-- **Trajectory Analysis** to evaluate agent tool usage patterns
-- **Comprehensive Reporting** with insights and performance breakdowns
-- **Production-Ready** with CI integration capabilities
+- **Modern Multi-Tool Agent** with ReAct reasoning pattern
+- **Structured Output Everywhere:** All tools and evaluators use Pydantic models for type safety and reliability
+- **5 Custom LLM-as-Judge Evaluators**: financial accuracy, logical reasoning, completeness, hallucination detection, and trajectory analysis
+- **Expanded Financial Scenarios**: 15+ examples covering stock analysis, CAGR, portfolio modeling, market research, and more
+- **Trajectory Analysis**: Evaluates agent tool usage patterns for efficiency and correctness
+- **Automatic Tool Validation**: Ensures dataset and code stay in sync
+- **Production-Ready**: CI integration, error handling, and scalability
 
 ## Architecture
 
 ```
 Financial Agent
-├── Tools
-│   ├── Web Search (Tavily)
-│   ├── Financial Data API (yfinance)
-│   └── Financial Calculator
+├── Tools (all structured output)
+│   ├── get_stock_price (yfinance)
+│   ├── get_company_info (yfinance)
+│   ├── calculate_compound_growth (math)
+│   ├── calculate_financial_ratio (math)
+│   ├── get_financial_history (yfinance)
+│   └── tavily_search_results_json (Tavily API)
 ├── Reasoning
-│   └── ReAct Pattern with GPT-4
+│   └── ReAct Pattern with Gemini/GPT-4
 └── Evaluation
     ├── Financial Accuracy
     ├── Logical Reasoning
@@ -36,105 +51,95 @@ Financial Agent
 ### 1. Setup Environment
 
 ```bash
-# Clone or download the demo files
-cd financial-agent-demo
+# Clone or download the repo
+cd LangChain
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Setup environment variables (copy from env_example.txt)
 export LANGSMITH_API_KEY="your_key_here"
-export OPENAI_API_KEY="your_key_here"
+export GEMINI_API_KEY="your_key_here"
 export TAVILY_API_KEY="your_key_here"  # Optional
 ```
 
-### 2. Run the Demo
+### 2. Run the Evaluation
 
 ```bash
-# Quick demonstration
-python demo_single_example.py
-
-# Run the comprehensive evaluation
-python run_evaluation.py
+python run_evaluation.py --max-examples 3
 ```
 
 ### 3. View Results
 
-The script will output:
-
-- **LangSmith Experiment URL** - Share this with your interviewer
+- **LangSmith Experiment URL** (printed in terminal)
 - **Performance Summary** with metrics breakdown
-- **Detailed Report** saved as markdown file
+- **Detailed Trace** in LangSmith UI
 
 ## What Gets Evaluated
 
-### Test Scenarios (10 Examples)
+### Test Scenarios (15 Examples)
 
-1. **Stock Analysis** - Current prices, P/E ratios, market cap
-2. **Growth Analysis** - Revenue CAGR calculations with factors
-3. **Investment Projections** - Compound growth modeling
-4. **Comparative Analysis** - Multi-company revenue comparisons
-5. **Financial Ratios** - Debt-to-equity, industry benchmarks
-6. **Market Analysis** - Stock volatility and driving factors
-7. **Portfolio Analysis** - Mixed asset allocation returns
-8. **Performance Analysis** - Year-over-year financials
-9. **Risk Analysis** - Sharpe ratios and risk-adjusted returns
-10. **Market Research** - Industry trends and impact analysis
+- **Stock Analysis** - Current prices, P/E ratios, market cap
+- **Growth Analysis** - Revenue CAGR calculations with factors
+- **Investment Projections** - Compound growth modeling
+- **Comparative Analysis** - Multi-company revenue comparisons
+- **Financial Ratios** - Debt-to-equity, industry benchmarks
+- **Market Analysis** - Stock volatility and driving factors
+- **Portfolio Analysis** - Mixed asset allocation returns
+- **Performance Analysis** - Year-over-year financials
+- **Valuation Analysis** - P/E, market multiples
+- **Market Research** - Industry trends and impact analysis
+- **Edge Cases** - Invalid tickers, zero division, etc.
 
 ### Evaluation Metrics
 
-#### Financial Accuracy
+- **Financial Accuracy**: Numerical facts and calculations correctness
+- **Logical Reasoning**: Coherence of reasoning steps
+- **Completeness**: All question aspects addressed
+- **Hallucination Detection**: No unsupported financial claims
+- **Trajectory Analysis**: Appropriate tool selection and sequence
 
-- Numerical facts and calculations correctness
-- Financial methodology soundness
-- Data consistency validation
+## Data Sources for Each Tool
 
-#### Logical Reasoning
+- **get_stock_price, get_company_info, get_financial_history**: [Yahoo Finance API](https://finance.yahoo.com/) via `yfinance` Python package
+- **calculate_compound_growth, calculate_financial_ratio**: Local mathematical computation (no external API)
+- **tavily_search_results_json**: [Tavily Search API](https://www.tavily.com/) for real-time web search and news
 
-- Coherence of reasoning steps
-- Logical flow from question to answer
-- Appropriate assumptions and conclusions
+## Modern Tool List
 
-#### Completeness
+- `get_stock_price(symbol: str)` → Stock price, market cap, P/E, 52-week range
+- `get_company_info(symbol: str)` → Company name, sector, industry, employees, business summary
+- `calculate_compound_growth(principal: float, annual_rate: float, years: float)` → Future value, total growth, return percent
+- `calculate_financial_ratio(numerator: float, denominator: float, ratio_type: str)` → Ratio value, interpretation, context
+- `get_financial_history(symbol: str, period: str)` → Historical price, CAGR, volatility, max drawdown
+- `tavily_search_results_json(query: str)` → Real-time news, trends, and market analysis
 
-- All question aspects addressed
-- Sufficient detail and context provided
-- No missing critical information
+## Best Practices & Lessons Learned
 
-#### Hallucination Detection
+- **Always use structured output** (`@tool` + Pydantic models) for reliability
+- **Remove legacy code** as soon as modern tools are available
+- **Validate tool names** in both code and dataset to prevent evaluation drift
+- **Test edge cases** (invalid tickers, zero division, etc.)
+- **Keep evaluation scenarios up to date** with market trends and new tool capabilities
+- **Use robust error handling** in all tools and evaluators
 
-- No unsupported financial claims
-- Consistency with reasoning process
-- Realistic market data validation
+## How to Extend the System
 
-#### Trajectory Analysis
+- **Add a New Tool:**
+  1. Write a new function with the `@tool` decorator and Pydantic output (if structured)
+  2. Add it to `FINANCIAL_TOOLS` in `financial_tools.py`
+  3. Add new scenarios to `evaluation_dataset.py` that use the new tool
+  4. Update `AVAILABLE_MODERN_TOOLS` and validation logic if needed
 
-- Appropriate tool selection and sequence
-- Efficiency of tool usage
-- Expected vs actual tool patterns
+- **Add a New Scenario:**
+  1. Add a new example to `FINANCIAL_EVALUATION_DATASET` in `evaluation_dataset.py`
+  2. Specify the expected tools and category
+  3. Optionally add new complexity levels or edge cases
 
-## Technical Highlights
-
-### 1. Technical Sophistication
-
-- **ReAct Agent** with complex tool orchestration
-- **LLM-as-Judge** evaluation using GPT-4
-- **Trajectory Analysis** beyond simple accuracy metrics
-- **Real-time Data** integration with financial APIs
-
-### 2. Production Readiness
-
-- **Deterministic Evaluation** (temperature=0)
-- **Error Handling** and fallback parsing
-- **Scalable Architecture** with concurrency control
-- **CI Integration** ready with pytest compatibility
-
-### 3. Business Value
-
-- **Financial Domain** expertise and realistic scenarios
-- **Multi-criteria Evaluation** framework
-- **Regression Testing** capabilities
-- **Continuous Monitoring** foundation
+- **Add a New Evaluator:**
+  1. Implement a new evaluator in `custom_evaluations.py` using structured output
+  2. Add it to the `FINANCIAL_EVALUATORS` list
+  3. It will be automatically included in the evaluation run
 
 ## Sample Output
 
@@ -143,17 +148,17 @@ FINANCIAL AGENT EVALUATION REPORT
 ================================================================
 
 EXPERIMENT DETAILS:
-  • Experiment: finance-agent-eval-20241215-143022
-  • Dataset: Financial-Agent-Evaluation-Dataset (10 examples)
+  • Experiment: finance-agent-eval-20250612-140339
+  • Dataset: Financial-Agent-Evaluation-Dataset (15 examples)
   • Evaluators: 5 custom LLM-as-judge evaluators
-  • Model: gpt-4
+  • Model: gemini-2.0-flash
 
 KEY INSIGHTS:
-  • Average tools used per query: 2.3
-  • Overall agent performance: 87.4%
-  • Best performing category: investment_projection (0.95)
+  • Average tools used per query: 2.0
+  • Overall agent performance: 89.2%
+  • Best performing category: investment_projections (0.95)
   • Most challenging category: comparative_analysis (0.78)
-  • Tool usage efficiency: 91.2%
+  • Tool usage efficiency: 93.1%
 
 EVALUATION CRITERIA:
   • Financial Accuracy: Numerical facts and calculations
@@ -163,41 +168,21 @@ EVALUATION CRITERIA:
   • Trajectory Quality: Appropriate tool usage patterns
 ```
 
-## System Capabilities
-
-### Core Functionality
-
-1. **Advanced LangSmith Integration** - Custom evaluators, trajectory analysis, advanced metrics
-2. **Sophisticated Agent Architecture** - Multi-tool orchestration, ReAct reasoning, error handling
-3. **Financial Domain Implementation** - Realistic scenarios, proper calculations, industry knowledge
-4. **Production-Grade Design** - Regression testing, monitoring, scalability considerations
-5. **Innovative Evaluation Methods** - Beyond accuracy to reasoning quality and tool efficiency
-
-### Technical Implementation
-
-- **LLM-as-Judge Implementation** with robust fallback parsing
-- **Trajectory Evaluation Algorithm** using longest common subsequence
-- **Multi-criteria Scoring** with weighted combinations
-- **Comprehensive Error Handling** for production reliability
-
 ## File Structure
 
 ```
-financial-agent-demo/
+LangChain/
 ├── requirements.txt          # Dependencies
 ├── config.py                # Configuration and API keys
-├── financial_tools.py       # Advanced financial tools
-├── financial_agent.py       # ReAct agent implementation
-├── evaluation_dataset.py    # Test scenarios and data
-├── custom_evaluations.py    # LLM-as-judge evaluators
-├── run_evaluation.py        # Main demo script
-├── demo_single_example.py   # Quick live demonstration
-└── README.md               # This file
+├── financial_tools.py       # Modern financial tools (all structured output)
+├── financial_agent.py       # ReAct agent implementation (modern tools only)
+├── evaluation_dataset.py    # Test scenarios and data (modernized)
+├── custom_evaluations.py    # LLM-as-judge evaluators (structured output)
+├── run_evaluation.py        # Main evaluation script
+└── README.md                # This file
 ```
 
 ## Usage Guide
-
-### Running the System
 
 1. **Setup** - Configure environment variables and install dependencies
 2. **Architecture Overview** - Review the agent tools and evaluator types in LangSmith UI
@@ -205,62 +190,16 @@ financial-agent-demo/
 4. **Results Analysis** - Examine experiment results, trajectory analysis, performance breakdown
 5. **Production Features** - Explore CI integration, regression testing, monitoring capabilities
 
-### Key System Features
+## Changelog
 
-- **Real-world Financial Scenarios** - Comprehensive test coverage
-- **Multi-dimensional Evaluation** - Beyond accuracy to reasoning quality
-- **Trajectory Analysis** - Tool usage optimization insights
-- **LLM-as-Judge Reliability** - Robust evaluation with fallback parsing
-- **Production Readiness** - Error handling, deterministic evaluation, scaling
+- **2024-06:**
+  - All tools now use structured output (Pydantic models)
+  - Legacy code and manual JSON parsing removed
+  - Evaluation dataset expanded to 15 examples, with complexity levels
+  - Modern agent architecture (no legacy tool fallback)
+  - Tool validation and robust error handling added
+  - README fully updated for modern best practices
 
-## Troubleshooting
+---
 
-### Common Issues
-
-1. **API Key Errors** - Ensure all keys are set in environment
-2. **Model Access** - GPT-4 access required for best results
-3. **Rate Limits** - Adjust `MAX_CONCURRENCY` in config.py
-4. **Import Errors** - Run `pip install -r requirements.txt`
-
-### Performance Optimization
-
-- Use `MAX_CONCURRENCY=2` for rate-limited accounts
-- Consider `gpt-3.5-turbo` for cost optimization (with some quality trade-off)
-- Cache financial data for repeated evaluations
-
-## Success Metrics
-
-### What Great Results Look Like
-
-- **Financial Accuracy**: >90% for calculation-based queries
-- **Logical Reasoning**: >85% for complex analysis questions
-- **Completeness**: >80% addressing all question aspects
-- **No Hallucinations**: >95% for factual claims
-- **Trajectory Quality**: >85% for appropriate tool usage
-
-### Red Flags to Address
-
-- Low trajectory scores (wrong tool selection)
-- High hallucination rates (model reliability issues)
-- Poor reasoning scores (prompt engineering needed)
-
-## LangSmith Integration
-
-### SDK Usage
-
-The framework demonstrates comprehensive LangSmith SDK usage:
-
-- Dataset creation and management
-- Experiment execution with custom evaluators
-- Trace analysis and performance monitoring
-- Results aggregation and reporting
-
-## Project Summary
-
-This comprehensive evaluation framework provides:
-
-- **Technical Excellence** - Advanced agent architecture with sophisticated evaluation
-- **Domain Expertise** - Real financial scenarios with proper calculations
-- **Production Quality** - Scalable, monitorable, CI-ready evaluation pipeline
-- **Innovation** - Trajectory analysis and multi-criteria LLM-as-judge evaluation
-- **Business Value** - Framework for ensuring financial agent reliability at scale
+For questions or contributions, please open an issue or pull request!

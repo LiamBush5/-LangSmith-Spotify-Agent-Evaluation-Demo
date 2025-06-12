@@ -25,6 +25,7 @@ class StockPriceData(BaseModel):
     week_52_high: Optional[float] = Field(description="52-week high price")
     week_52_low: Optional[float] = Field(description="52-week low price")
     formatted_summary: str = Field(description="Human-readable summary")
+    error: Optional[str] = None
 
 class CompanyInfo(BaseModel):
     """Structured company information."""
@@ -35,6 +36,41 @@ class CompanyInfo(BaseModel):
     country: Optional[str] = Field(description="Country of incorporation")
     employees: Optional[int] = Field(description="Number of employees")
     business_summary: Optional[str] = Field(description="Business description")
+    error: Optional[str] = None
+
+class CompoundGrowthResult(BaseModel):
+    principal: float
+    annual_rate: float
+    years: float
+    future_value: float
+    total_growth: float
+    total_return_percent: float
+    formatted_summary: str
+    error: Optional[str] = None
+
+class FinancialRatioResult(BaseModel):
+    numerator: float
+    denominator: float
+    ratio_type: str
+    ratio_value: Optional[float] = None
+    description: Optional[str] = None
+    interpretation: Optional[str] = None
+    context: Optional[str] = None
+    formatted_summary: Optional[str] = None
+    error: Optional[str] = None
+
+class FinancialHistoryResult(BaseModel):
+    symbol: str
+    period: str
+    start_price: Optional[float] = None
+    end_price: Optional[float] = None
+    total_return_percent: Optional[float] = None
+    cagr_percent: Optional[float] = None
+    volatility_percent: Optional[float] = None
+    max_drawdown_percent: Optional[float] = None
+    trading_days: Optional[int] = None
+    formatted_summary: Optional[str] = None
+    error: Optional[str] = None
 
 # Modern function-based tools using @tool decorator
 @tool
@@ -100,7 +136,8 @@ def get_stock_price(symbol: str) -> StockPriceData:
             pe_ratio=None,
             week_52_high=None,
             week_52_low=None,
-            formatted_summary=f"Error retrieving data for {symbol}: {str(e)}"
+            formatted_summary=f"Error retrieving data for {symbol}: {str(e)}",
+            error=str(e)
         )
 
 @tool
@@ -141,7 +178,8 @@ def get_company_info(symbol: str) -> CompanyInfo:
             industry=None,
             country=None,
             employees=None,
-            business_summary=f"Error retrieving company info for {symbol}: {str(e)}"
+            business_summary=f"Error retrieving company info for {symbol}: {str(e)}",
+            error=str(e)
         )
 
 @tool
@@ -149,7 +187,7 @@ def calculate_compound_growth(
     principal: float,
     annual_rate: float,
     years: float
-) -> Dict[str, Any]:
+) -> CompoundGrowthResult:
     """
     Calculate compound growth and future value of an investment.
 
@@ -159,29 +197,33 @@ def calculate_compound_growth(
         years: Number of years to compound
 
     Returns:
-        Dictionary with future value, total growth, and return percentage
+        CompoundGrowthResult object with future value, total growth, and return percentage
     """
     try:
         if years <= 0 or principal <= 0:
-            return {
-                "error": "Principal and years must be positive numbers",
-                "principal": principal,
-                "annual_rate": annual_rate,
-                "years": years
-            }
+            return CompoundGrowthResult(
+                principal=principal,
+                annual_rate=annual_rate,
+                years=years,
+                future_value=0.0,
+                total_growth=0.0,
+                total_return_percent=0.0,
+                formatted_summary="",
+                error="Principal and years must be positive numbers"
+            )
 
         future_value = principal * (1 + annual_rate) ** years
         total_growth = future_value - principal
         total_return_pct = (future_value / principal - 1) * 100
 
-        return {
-            "principal": principal,
-            "annual_rate": annual_rate,
-            "years": years,
-            "future_value": round(future_value, 2),
-            "total_growth": round(total_growth, 2),
-            "total_return_percent": round(total_return_pct, 2),
-            "formatted_summary": f"""
+        return CompoundGrowthResult(
+            principal=principal,
+            annual_rate=annual_rate,
+            years=years,
+            future_value=round(future_value, 2),
+            total_growth=round(total_growth, 2),
+            total_return_percent=round(total_return_pct, 2),
+            formatted_summary=f"""
 Compound Growth Calculation:
 • Initial Investment: ${principal:,.2f}
 • Annual Return Rate: {annual_rate*100:.2f}%
@@ -189,23 +231,28 @@ Compound Growth Calculation:
 • Future Value: ${future_value:,.2f}
 • Total Growth: ${total_growth:,.2f}
 • Total Return: {total_return_pct:.2f}%
-            """.strip()
-        }
+            """.strip(),
+            error=None
+        )
 
     except Exception as e:
-        return {
-            "error": f"Calculation error: {str(e)}",
-            "principal": principal,
-            "annual_rate": annual_rate,
-            "years": years
-        }
+        return CompoundGrowthResult(
+            principal=principal,
+            annual_rate=annual_rate,
+            years=years,
+            future_value=0.0,
+            total_growth=0.0,
+            total_return_percent=0.0,
+            formatted_summary="",
+            error=f"Calculation error: {str(e)}"
+        )
 
 @tool
 def calculate_financial_ratio(
     numerator: float,
     denominator: float,
     ratio_type: Literal["pe", "debt_to_equity", "current", "roe", "generic"] = "generic"
-) -> Dict[str, Any]:
+) -> FinancialRatioResult:
     """
     Calculate and interpret financial ratios.
 
@@ -215,16 +262,16 @@ def calculate_financial_ratio(
         ratio_type: Type of ratio for contextual interpretation
 
     Returns:
-        Dictionary with ratio value, interpretation, and formatted summary
+        FinancialRatioResult object with ratio value, interpretation, and formatted summary
     """
     try:
         if denominator == 0:
-            return {
-                "error": "Denominator cannot be zero",
-                "numerator": numerator,
-                "denominator": denominator,
-                "ratio_type": ratio_type
-            }
+            return FinancialRatioResult(
+                numerator=numerator,
+                denominator=denominator,
+                ratio_type=ratio_type,
+                error="Denominator cannot be zero"
+            )
 
         ratio_value = numerator / denominator
 
@@ -259,34 +306,35 @@ def calculate_financial_ratio(
 
         info = interpretations.get(ratio_type, interpretations['generic'])
 
-        return {
-            "numerator": numerator,
-            "denominator": denominator,
-            "ratio_type": ratio_type,
-            "ratio_value": round(ratio_value, 4),
-            "description": info["description"],
-            "interpretation": info["interpretation"],
-            "context": info["context"],
-            "formatted_summary": f"""
+        return FinancialRatioResult(
+            numerator=numerator,
+            denominator=denominator,
+            ratio_type=ratio_type,
+            ratio_value=round(ratio_value, 4),
+            description=info["description"],
+            interpretation=info["interpretation"],
+            context=info["context"],
+            formatted_summary=f"""
 {info['description']}: {ratio_value:.3f}
 Interpretation: {info['interpretation']}
 Assessment: {info['context']}
-            """.strip()
-        }
+            """.strip(),
+            error=None
+        )
 
     except Exception as e:
-        return {
-            "error": f"Calculation error: {str(e)}",
-            "numerator": numerator,
-            "denominator": denominator,
-            "ratio_type": ratio_type
-        }
+        return FinancialRatioResult(
+            numerator=numerator,
+            denominator=denominator,
+            ratio_type=ratio_type,
+            error=f"Calculation error: {str(e)}"
+        )
 
 @tool
 def get_financial_history(
     symbol: str,
     period: str = "1y"
-) -> Dict[str, Any]:
+) -> FinancialHistoryResult:
     """
     Get historical stock performance and calculate key metrics.
 
@@ -295,7 +343,7 @@ def get_financial_history(
         period: Time period ('1y', '2y', '5y', 'max')
 
     Returns:
-        Dictionary with historical performance metrics
+        FinancialHistoryResult object with historical performance metrics
     """
     try:
         symbol = symbol.upper()
@@ -303,11 +351,11 @@ def get_financial_history(
         hist = ticker.history(period=period)
 
         if hist.empty:
-            return {
-                "error": f"No historical data available for {symbol}",
-                "symbol": symbol,
-                "period": period
-            }
+            return FinancialHistoryResult(
+                symbol=symbol,
+                period=period,
+                error=f"No historical data available for {symbol}"
+            )
 
         # Calculate performance metrics
         start_price = hist['Close'].iloc[0]
@@ -326,17 +374,17 @@ def get_financial_history(
         drawdown = (cumulative_returns / rolling_max - 1) * 100
         max_drawdown = drawdown.min()
 
-        return {
-            "symbol": symbol,
-            "period": period,
-            "start_price": round(start_price, 2),
-            "end_price": round(end_price, 2),
-            "total_return_percent": round(total_return, 2),
-            "cagr_percent": round(cagr * 100, 2),
-            "volatility_percent": round(volatility, 2),
-            "max_drawdown_percent": round(max_drawdown, 2),
-            "trading_days": len(hist),
-            "formatted_summary": f"""
+        return FinancialHistoryResult(
+            symbol=symbol,
+            period=period,
+            start_price=round(start_price, 2),
+            end_price=round(end_price, 2),
+            total_return_percent=round(total_return, 2),
+            cagr_percent=round(cagr * 100, 2),
+            volatility_percent=round(volatility, 2),
+            max_drawdown_percent=round(max_drawdown, 2),
+            trading_days=len(hist),
+            formatted_summary=f"""
 {symbol} Historical Performance ({period}):
 • Start Price: ${start_price:.2f}
 • End Price: ${end_price:.2f}
@@ -344,15 +392,16 @@ def get_financial_history(
 • CAGR: {cagr*100:.2f}% (annualized)
 • Volatility: {volatility:.2f}%
 • Max Drawdown: {max_drawdown:.2f}%
-            """.strip()
-        }
+            """.strip(),
+            error=None
+        )
 
     except Exception as e:
-        return {
-            "error": f"Error retrieving historical data for {symbol}: {str(e)}",
-            "symbol": symbol,
-            "period": period
-        }
+        return FinancialHistoryResult(
+            symbol=symbol,
+            period=period,
+            error=f"Error retrieving historical data for {symbol}: {str(e)}"
+        )
 
 # Initialize search tool
 search_tool = TavilySearch(
@@ -392,6 +441,17 @@ if __name__ == "__main__":
     print(f"Type: {type(calc_result)}")
     print(f"Data: {calc_result}")
 
+    # Test financial ratio tool
+    print("\n" + "="*60)
+    print("Testing Financial Ratio Tool:")
+    ratio_result = calculate_financial_ratio.invoke({
+        "numerator": 82.5,
+        "denominator": 5.5,
+        "ratio_type": "pe"
+    })
+    print(f"Type: {type(ratio_result)}")
+    print(f"Data: {ratio_result}")
+
     # Test historical data tool
     print("\n" + "="*60)
     print("Testing Historical Data Tool:")
@@ -400,7 +460,7 @@ if __name__ == "__main__":
         "period": "1y"
     })
     print(f"Type: {type(hist_result)}")
-    print(f"Data preview: {hist_result.get('formatted_summary', 'No summary')}")
+    print(f"Data preview: {hist_result.formatted_summary}")
 
     print("\n" + "="*60)
     print("🎉 All modern tools working perfectly!")

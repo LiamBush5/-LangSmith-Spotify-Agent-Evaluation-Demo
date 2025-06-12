@@ -180,7 +180,7 @@ def run_financial_agent(inputs: Dict[str, str]) -> Dict[str, Any]:
     Expected input format: {"question": "financial query"}
     Returns format: {"response": "answer", "tool_trajectory": [...]}
     """
-    agent = FinancialAgent()  # Uses modern structured tools by default
+    agent = FinancialAgent()  # Uses Financial structured tools by default
     query = inputs.get("question", "")
 
     if not query:

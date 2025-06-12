@@ -69,15 +69,16 @@ class FinancialAgentEvaluationDemo:
             raise
 
     def run_evaluation_experiment(self) -> Dict[str, Any]:
-        """Run the comprehensive evaluation experiment."""
+        """Run the comprehensive evaluation experiment with thread-based tracing."""
         print("\n" + "="*60)
-        print("RUNNING EVALUATION EXPERIMENT")
+        print("RUNNING EVALUATION EXPERIMENT WITH THREAD CONSOLIDATION")
         print("="*60)
 
         print(f"Target Function: run_financial_agent")
         print(f"Dataset: {self.dataset_name}")
         print(f"Evaluators: {len(self.evaluators)} custom evaluators")
         print(f"Max Concurrency: {config.MAX_CONCURRENCY}")
+        print(f"Thread-based tracing: ENABLED for consolidated traces")
 
         try:
             # Prepare data source for evaluation
@@ -100,17 +101,24 @@ class FinancialAgentEvaluationDemo:
                 data_source = sampled_examples
                 print(f"Selected {len(sampled_examples)} examples for evaluation")
 
-            # Run the evaluation
+            # Run the evaluation with thread-based metadata for trace consolidation
             results = evaluate(
                 run_financial_agent,  # target as first positional argument
                 data=data_source,
                 evaluators=self.evaluators,
                 experiment_prefix=config.EXPERIMENT_PREFIX,
                 max_concurrency=config.MAX_CONCURRENCY,
-                client=self.client
+                client=self.client,
+                # Add metadata to enable thread-based trace consolidation
+                metadata={
+                    "evaluation_type": "financial_agent_comprehensive",
+                    "thread_consolidation": "enabled",
+                    "evaluator_count": len(self.evaluators),
+                    "max_examples": self.max_examples or "all"
+                }
             )
 
-            print(f"\nEvaluation completed!")
+            print(f"\nEvaluation completed with thread-based tracing!")
 
             # Debug: Print results object to understand what's available
             print(f"\nDEBUG: Results object type: {type(results)}")
@@ -162,7 +170,8 @@ class FinancialAgentEvaluationDemo:
                     except:
                         experiment_url = f"https://smith.langchain.com/experiments/{experiment_name}"
 
-            print(f"View results: {experiment_url}")
+            print(f"View consolidated thread traces: {experiment_url}")
+            print(f"🧵 Each evaluation run is now consolidated in its own thread for better visibility")
 
             return {
                 "experiment_url": experiment_url,
@@ -261,8 +270,6 @@ class FinancialAgentEvaluationDemo:
             insights.append(f"Error generating insights: {e}")
 
         return insights
-
-
 
     def run_full_demo(self) -> Dict[str, Any]:
         """Run the complete evaluation demo from start to finish."""

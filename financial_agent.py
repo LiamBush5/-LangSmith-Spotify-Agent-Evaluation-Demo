@@ -1,8 +1,10 @@
 """
-Advanced Financial Research Agent with LangSmith Tracing
+Advanced Financial Research Agent with LangSmith Thread-based Tracing
 Uses ReAct pattern with multiple financial tools for comprehensive analysis.
+Implements proper thread-based tracing for consolidated trace visibility.
 """
 import os
+import uuid
 from typing import Dict, List, Any, Optional
 import json
 from langchain.agents import AgentExecutor, create_react_agent
@@ -21,6 +23,7 @@ os.environ["LANGSMITH_PROJECT"] = config.LANGSMITH_PROJECT
 class FinancialAgent:
     """
     Advanced financial research agent with comprehensive tool access and reasoning.
+    Uses thread-based tracing for consolidated trace visibility.
     """
 
     def __init__(self):
@@ -123,12 +126,13 @@ Thought:{agent_scratchpad}"""
             return output
 
     @traceable
-    def analyze_query(self, query: str) -> Dict[str, Any]:
+    def analyze_query(self, query: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Main method to analyze financial queries with full tracing.
+        Main method to analyze financial queries with thread-based tracing.
 
         Args:
             query: Financial question to analyze
+            thread_id: Optional thread ID for consolidating traces
 
         Returns:
             Dict containing response, tool calls, and reasoning steps
@@ -136,12 +140,28 @@ Thought:{agent_scratchpad}"""
         print(f"\n🔍 Analyzing Query: {query}")
         print("="*60)
 
+        # Generate thread ID if not provided for trace consolidation
+        if thread_id is None:
+            thread_id = str(uuid.uuid4())
+
         # Reset tool calls log
         self.tool_calls_log = []
 
         try:
-            # Execute the agent
-            result = self.agent_executor.invoke({"input": query})
+            # Execute the agent with thread metadata for trace consolidation
+            result = self.agent_executor.invoke(
+                {"input": query},
+                config={
+                    "metadata": {
+                        "thread_id": thread_id,  # This consolidates traces into a thread
+                        "session_id": thread_id,  # Alternative thread identifier
+                        "conversation_id": thread_id,  # Another thread identifier option
+                        "query": query,
+                        "agent_type": "financial_research"
+                    },
+                    "tags": ["financial_agent", "thread_consolidated"]
+                }
+            )
 
             # Extract information
             response = result.get("output", "")
@@ -175,10 +195,12 @@ Thought:{agent_scratchpad}"""
                 "reasoning_steps": reasoning_steps,
                 "total_tool_calls": len(tool_trajectory),
                 "unique_tools_used": list(set(tool_trajectory)),
-                "query": query
+                "query": query,
+                "thread_id": thread_id  # Include thread ID for reference
             }
 
             print(f"\nAnalysis Complete!")
+            print(f"Thread ID: {thread_id}")
             print(f"Tools Used: {', '.join(analysis_result['unique_tools_used'])}")
             print(f"Total Tool Calls: {analysis_result['total_tool_calls']}")
 
@@ -196,70 +218,73 @@ Thought:{agent_scratchpad}"""
                 "total_tool_calls": len(self.tool_calls_log),
                 "unique_tools_used": [],
                 "query": query,
+                "thread_id": thread_id,
                 "error": True
             }
-            print(f"Error: {str(e)}")
+
+            print(f"❌ Analysis failed: {str(e)}")
             return error_result
 
-# Convenience function for evaluation
+
 @traceable
 def run_financial_agent(inputs: Dict[str, str]) -> Dict[str, Any]:
     """
-    Target function for LangSmith evaluation.
-    Expected input format: {"question": "financial query"}
-    Returns format: {"response": "answer", "tool_trajectory": [...]}
+    Main entry point for financial agent evaluation with thread-based tracing.
+
+    This function is called by the LangSmith evaluation framework and ensures
+    all traces are consolidated under a single thread for better visibility.
+
+    Args:
+        inputs: Dictionary containing the query and any additional parameters
+
+    Returns:
+        Dictionary containing the agent's response and metadata
     """
-    agent = FinancialAgent()  # Uses Financial structured tools by default
-    query = inputs.get("question", "")
+    # Handle multiple possible input key formats
+    query = inputs.get("input", inputs.get("query", inputs.get("question", "")))
 
     if not query:
         return {
-            "response": "Error: No question provided",
+            "response": "No query provided",
+            "error": True,
             "tool_trajectory": [],
             "reasoning_steps": [],
             "total_tool_calls": 0,
-            "unique_tools_used": []
+            "unique_tools_used": [],
+            "thread_id": None
         }
 
-    result = agent.analyze_query(query)
+    # Generate a unique thread ID for this evaluation run
+    thread_id = str(uuid.uuid4())
 
-    # Ensure all outputs are serializable for LangSmith
-    serialized_result = agent._serialize_tool_output(result)
+    print(f"\n{'='*80}")
+    print(f"🤖 FINANCIAL AGENT EVALUATION")
+    print(f"Query: {query}")
+    print(f"Thread ID: {thread_id}")
+    print(f"{'='*80}")
 
-    # Return in expected format for evaluation
-    return {
-        "response": serialized_result["response"],
-        "tool_trajectory": serialized_result["tool_trajectory"],
-        "reasoning_steps": serialized_result["reasoning_steps"],
-        "total_tool_calls": serialized_result["total_tool_calls"],
-        "unique_tools_used": serialized_result["unique_tools_used"],
-        "query": serialized_result["query"]
-    }
-
-if __name__ == "__main__":
-    """Test the financial agent with sample queries."""
-
-    # Test queries
-    test_queries = [
-        "What is Apple's current stock price and how has it performed over the last year?",
-        "Compare Tesla's revenue growth over the past 3 years and calculate the CAGR.",
-        "If I invest $10,000 in the S&P 500 with a 7% annual return, what will it be worth in 10 years?"
-    ]
-
+    # Initialize agent and run analysis with thread consolidation
     agent = FinancialAgent()
 
-    for i, query in enumerate(test_queries, 1):
-        print(f"\n{'='*80}")
-        print(f"TEST {i}: {query}")
-        print('='*80)
+    # Use thread metadata to consolidate all traces
+    result = agent.analyze_query(
+        query,
+        thread_id=thread_id
+    )
 
-        result = agent.analyze_query(query)
+    # Add evaluation metadata for LangSmith
+    result.update({
+        "evaluation_run": True,
+        "timestamp": str(pd.Timestamp.now()),
+        "agent_version": "v2.0_thread_consolidated"
+    })
 
-        print(f"\n Response:\n{result['response']}")
-        print(f"\nTools Used: {result['unique_tools_used']}")
-        print(f"Tool Trajectory: {' → '.join(result['tool_trajectory'])}")
+    print(f"\n✅ Evaluation Complete - Thread ID: {thread_id}")
+    print(f"Response Length: {len(result.get('response', ''))}")
+    print(f"Tools Used: {result.get('total_tool_calls', 0)}")
 
-        # Wait for user input to continue (comment out for automated testing)
-        # input("\nPress Enter to continue to next test...")
+    return result
 
-    print(f"\nAll tests completed! Check LangSmith project '{config.LANGSMITH_PROJECT}' for detailed traces.")
+
+# Ensure pandas is imported for timestamp
+import pandas as pd

@@ -80,11 +80,30 @@ class FinancialAgentEvaluationDemo:
             )
 
             print(f"\n✅ Evaluation completed!")
-            print(f"🔗 View results: {results.experiment_url}")
+
+            # Try to get experiment URL - handle different LangSmith versions
+            experiment_url = 'URL not available'
+            experiment_name = 'Experiment completed'
+
+            # Check for various possible attribute names
+            if hasattr(results, 'experiment_url'):
+                experiment_url = results.experiment_url
+            elif hasattr(results, 'experiment_id'):
+                experiment_url = f"https://smith.langchain.com/o/{getattr(results, 'project_name', 'project')}/datasets/{getattr(results, 'experiment_id', 'experiment')}"
+            elif hasattr(results, '_experiment_name'):
+                experiment_name = results._experiment_name
+                experiment_url = f"LangSmith project: {config.LANGSMITH_PROJECT}"
+
+            if hasattr(results, 'experiment_name'):
+                experiment_name = results.experiment_name
+            elif hasattr(results, '_experiment_name'):
+                experiment_name = results._experiment_name
+
+            print(f"🔗 View results: {experiment_url}")
 
             return {
-                "experiment_url": getattr(results, 'experiment_url', 'URL not available'),
-                "experiment_name": getattr(results, 'experiment_name', 'Experiment completed'),
+                "experiment_url": experiment_url,
+                "experiment_name": experiment_name,
                 "results": results
             }
 
@@ -193,7 +212,7 @@ class FinancialAgentEvaluationDemo:
   • Model: {config.AGENT_MODEL}
 
 🔗 LANGSMITH LINKS:
-  • Experiment URL: {results['experiment_url']}
+  • Experiment URL: {results.get('experiment_url', 'URL not available')}
   • Project: {config.LANGSMITH_PROJECT}
 
 📈 KEY INSIGHTS:
@@ -255,7 +274,7 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             print("\n" + "🎉" + " DEMO COMPLETED SUCCESSFULLY! " + "🎉")
             print("="*60)
             print(f"⏱️ Total Runtime: {elapsed_time:.1f} seconds")
-            print(f"🔗 View Full Results: {results['experiment_url']}")
+            print(f"🔗 View Full Results: {results.get('experiment_url', 'URL not available')}")
             print(f"📊 Examples Evaluated: {len(FINANCIAL_EVALUATION_DATASET)}")
             print(f"⚖️ Evaluation Metrics: {len(self.evaluators)}")
 
@@ -265,7 +284,7 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
             return {
                 "success": True,
-                "experiment_url": results['experiment_url'],
+                "experiment_url": results.get('experiment_url', 'URL not available'),
                 "dataset_id": dataset_id,
                 "insights": insights,
                 "report": report,
@@ -326,7 +345,7 @@ if __name__ == "__main__":
 
     if results["success"]:
         print(f"\n🎉 Demo completed successfully!")
-        print(f"🔗 Share this URL with your interviewer: {results['experiment_url']}")
+        print(f"🔗 Share this URL with your interviewer: {results.get('experiment_url', 'URL not available')}")
 
         # Save report to file
         with open(f"evaluation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md", "w") as f:

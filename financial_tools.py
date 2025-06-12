@@ -101,6 +101,35 @@ class CompoundGrowthInput(BaseModel):
     annual_rate: float = Field(description="Annual growth rate as a decimal (e.g., 0.07 for 7%)")
     years: float = Field(description="Number of years to compound")
 
+    @model_validator(mode='before')
+    @classmethod
+    def parse_combined_input(cls, values):
+        """Handle malformed string inputs like "{'principal': 260.17, 'annual_rate': 0.07, 'years': 4}"."""
+        if isinstance(values, str):
+            parsed_dict = parse_malformed_dict_string(values)
+            if parsed_dict:
+                result = {}
+                # Extract principal
+                for key in ['principal', 'PRINCIPAL', 'amount', 'AMOUNT']:
+                    if key in parsed_dict:
+                        result['principal'] = float(parsed_dict[key])
+                        break
+                # Extract annual_rate (handle None values)
+                for key in ['annual_rate', 'ANNUAL_RATE', 'rate', 'RATE']:
+                    if key in parsed_dict and parsed_dict[key] is not None:
+                        result['annual_rate'] = float(parsed_dict[key])
+                        break
+                # Set default if not found or None
+                if 'annual_rate' not in result:
+                    result['annual_rate'] = 0.07  # Default 7% annual return
+                # Extract years
+                for key in ['years', 'YEARS', 'time', 'TIME']:
+                    if key in parsed_dict:
+                        result['years'] = float(parsed_dict[key])
+                        break
+                return result
+        return values
+
 class FinancialRatioInput(BaseModel):
     """Input model for financial ratio calculation."""
     numerator: float = Field(description="Numerator value")
@@ -109,6 +138,35 @@ class FinancialRatioInput(BaseModel):
         default="generic",
         description="Type of financial ratio"
     )
+
+    @model_validator(mode='before')
+    @classmethod
+    def parse_combined_input(cls, values):
+        """Handle malformed string inputs like "{'numerator': 82.50, 'denominator': 5.50, 'ratio_type': 'pe'}"."""
+        if isinstance(values, str):
+            parsed_dict = parse_malformed_dict_string(values)
+            if parsed_dict:
+                result = {}
+                # Extract numerator
+                for key in ['numerator', 'NUMERATOR', 'num', 'NUM']:
+                    if key in parsed_dict:
+                        result['numerator'] = float(parsed_dict[key])
+                        break
+                # Extract denominator
+                for key in ['denominator', 'DENOMINATOR', 'den', 'DEN']:
+                    if key in parsed_dict:
+                        result['denominator'] = float(parsed_dict[key])
+                        break
+                # Extract ratio_type
+                for key in ['ratio_type', 'RATIO_TYPE', 'type', 'TYPE']:
+                    if key in parsed_dict:
+                        result['ratio_type'] = str(parsed_dict[key]).lower()
+                        break
+                # Set default ratio_type if not found
+                if 'ratio_type' not in result:
+                    result['ratio_type'] = 'generic'
+                return result
+        return values
 
 # Modern Pydantic schemas for structured input/output
 class StockPriceData(BaseModel):
@@ -293,17 +351,18 @@ def get_company_info(symbol: Union[str, Dict[str, Any]]) -> CompanyInfo:
             error=str(e)
         )
 
+
 @tool
 def calculate_compound_growth(
-    principal: Union[float, Dict[str, Any]],
-    annual_rate: float = None,
-    years: float = None
+    principal: Union[str, Dict[str, Any], float],
+    annual_rate: Optional[float] = None,
+    years: Optional[float] = None
 ) -> CompoundGrowthResult:
     """
     Calculate compound growth and future value of an investment.
 
     Args:
-        principal: Initial investment amount in dollars or dict with all parameters
+        principal: Initial investment amount or malformed string/dict with all parameters
         annual_rate: Annual growth rate as a decimal (e.g., 0.07 for 7%)
         years: Number of years to compound
 
@@ -311,15 +370,24 @@ def calculate_compound_growth(
         CompoundGrowthResult object with future value, total growth, and return percentage
     """
     try:
-        # Use Pydantic model for robust input parsing
-        if isinstance(principal, dict):
-            input_data = CompoundGrowthInput.model_validate(principal)
-        else:
-            input_data = CompoundGrowthInput(
-                principal=principal,
-                annual_rate=annual_rate,
-                years=years
+        # Handle malformed string inputs from ReAct agent
+        if isinstance(principal, str):
+            # This is likely a malformed string like "{'principal': 260.17, 'annual_rate': None, 'years': 4}"
+            parsed_input = CompoundGrowthInput.model_validate(principal)
+        elif isinstance(principal, dict):
+            # This is a proper dict input
+            parsed_input = CompoundGrowthInput.model_validate(principal)
+        elif isinstance(principal, (int, float)):
+            # Normal individual parameters
+            parsed_input = CompoundGrowthInput(
+                principal=float(principal),
+                annual_rate=annual_rate if annual_rate is not None else 0.07,
+                years=years if years is not None else 10
             )
+        else:
+            raise ValueError(f"Invalid input type: {type(principal)}")
+
+        input_data = parsed_input
 
         principal_val = input_data.principal
         annual_rate_val = input_data.annual_rate
@@ -379,15 +447,15 @@ Compound Growth Calculation:
 
 @tool
 def calculate_financial_ratio(
-    numerator: float,
-    denominator: float,
-    ratio_type: Literal["pe", "debt_to_equity", "current", "roe", "generic"] = "generic"
+    numerator: Union[str, Dict[str, Any], float],
+    denominator: Optional[float] = None,
+    ratio_type: Optional[str] = "generic"
 ) -> FinancialRatioResult:
     """
     Calculate and interpret financial ratios.
 
     Args:
-        numerator: Top number in the ratio
+        numerator: Top number in the ratio or malformed string/dict with all parameters
         denominator: Bottom number in the ratio
         ratio_type: Type of ratio for contextual interpretation
 
@@ -395,6 +463,31 @@ def calculate_financial_ratio(
         FinancialRatioResult object with ratio value, interpretation, and formatted summary
     """
     try:
+        # Handle malformed string inputs from ReAct agent
+        if isinstance(numerator, str):
+            # This is likely a malformed string like "{'numerator': 82.50, 'denominator': 5.50, 'ratio_type': 'pe'}"
+            parsed_input = FinancialRatioInput.model_validate(numerator)
+            numerator_val = parsed_input.numerator
+            denominator_val = parsed_input.denominator
+            ratio_type_val = parsed_input.ratio_type
+        elif isinstance(numerator, dict):
+            # This is a proper dict input
+            parsed_input = FinancialRatioInput.model_validate(numerator)
+            numerator_val = parsed_input.numerator
+            denominator_val = parsed_input.denominator
+            ratio_type_val = parsed_input.ratio_type
+        elif isinstance(numerator, (int, float)):
+            # Normal individual parameters
+            numerator_val = float(numerator)
+            denominator_val = float(denominator) if denominator is not None else 1.0
+            ratio_type_val = ratio_type if ratio_type is not None else "generic"
+        else:
+            raise ValueError(f"Invalid input type: {type(numerator)}")
+
+        numerator = numerator_val
+        denominator = denominator_val
+        ratio_type = ratio_type_val
+
         if denominator == 0:
             return FinancialRatioResult(
                 numerator=numerator,

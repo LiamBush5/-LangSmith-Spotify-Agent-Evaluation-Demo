@@ -53,11 +53,23 @@ class FinancialAgent:
 AVAILABLE TOOLS:
 {tools}
 
+CRITICAL: TOOL INPUT FORMAT
+Use the exact format for each tool:
+- get_stock_price: Use MSFT (just the symbol, no quotes)
+- get_company_info: Use AAPL (just the symbol, no quotes)
+- get_financial_history: Use AAPL 5y (symbol and period separated by space)
+- calculate_compound_growth: Use 10000 0.07 10 (principal, rate, years separated by spaces)
+- calculate_financial_ratio: Use 82.50 5.50 pe (numerator, denominator, type separated by spaces)
+- tavily_search_results_json: Use Microsoft stock price (search query, no quotes)
+
+NEVER use JSON format like {{"symbol": "AAPL"}} - use space-separated values for multi-parameter tools!
+
 FINANCIAL TOOL USAGE GUIDELINES:
 - For current stock prices: Use get_stock_price(symbol) - returns structured StockPriceData
 - For company information: Use get_company_info(symbol) - returns structured CompanyInfo
-- For compound growth: Use calculate_compound_growth(principal, annual_rate, years)
-- For financial ratios: Use calculate_financial_ratio(numerator, denominator, ratio_type)
+- For historical data: Use get_financial_history("SYMBOL PERIOD") - period can be "1y", "2y", "5y", "max"
+- For compound growth: Use calculate_compound_growth("PRINCIPAL RATE YEARS")
+- For financial ratios: Use calculate_financial_ratio("NUMERATOR DENOMINATOR TYPE")
 - For recent news/events: Use tavily_search_results_json
 - STRUCTURED OUTPUT: Financial tools return validated Pydantic models for reliability
 - MINIMIZE TOOL CALLS: Plan your tool usage efficiently before starting
@@ -77,7 +89,7 @@ Use the following format:
 Question: the input question you must answer
 Thought: you should always think about what to do
 Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
+Action Input: the input to the action (use proper parameter format as shown above)
 Observation: the result of the action
 ... (this Thought/Action/Action Input/Observation can repeat N times)
 Thought: I now know the final answer

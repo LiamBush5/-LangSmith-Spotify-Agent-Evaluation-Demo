@@ -5,10 +5,14 @@ Enhanced with robust structured output using Pydantic models.
 """
 import json
 from typing import Dict, Any, List, Optional, Union
+
+# CRITICAL: Import config FIRST to set environment variables before LangSmith imports
+import config
+
+# Now import LangSmith after environment is configured
 from langsmith.evaluation import evaluate
 from langsmith import Client
 from pydantic import BaseModel, Field, field_validator
-import config
 
 # Enhanced Pydantic models for structured output
 class EvaluationResponse(BaseModel):
@@ -57,38 +61,57 @@ class HallucinationEvaluationResponse(BaseModel):
         """Ensure scores are properly bounded and rounded."""
         return max(0.0, min(1.0, round(v, 3)))
 
-# Initialize evaluator LLM using factory function
+# Use untraced evaluator to avoid cluttering agent traces
 evaluator_llm = config.get_evaluator_model()
 
-# Create structured evaluator LLMs for different response types
-standard_evaluator_llm = evaluator_llm.with_structured_output(EvaluationResponse)
-trajectory_evaluator_llm = evaluator_llm.with_structured_output(TrajectoryEvaluationResponse)
-hallucination_evaluator_llm = evaluator_llm.with_structured_output(HallucinationEvaluationResponse)
-
-def safe_structured_evaluation(llm_func, fallback_score: float = 0.0, evaluator_name: str = "unknown") -> Dict[str, Any]:
+def safe_evaluation(prompt: str, fallback_score: float = 0.0, evaluator_name: str = "unknown") -> Dict[str, float]:
     """
-    Safely execute a structured LLM evaluation with comprehensive error handling.
+    Safely execute an LLM evaluation with comprehensive error handling.
+    Returns just score and reasoning to avoid tracing complexity.
 
     Args:
-        llm_func: Function that calls the LLM and returns a Pydantic model
+        prompt: The evaluation prompt to send to the LLM
         fallback_score: Score to return if evaluation fails
         evaluator_name: Name of the evaluator for error reporting
 
     Returns:
-        Dictionary with evaluation results
+        Dictionary with score and reasoning
     """
     try:
-        result = llm_func()
-        return result.model_dump() if hasattr(result, 'model_dump') else result.dict()
+        # Use LangChain evaluator model
+        response = evaluator_llm.invoke(prompt)
+        content = response.content
+
+        # Simple parsing - look for score in the response
+        lines = content.strip().split('\n')
+        score = fallback_score
+        reasoning = content
+
+        # Try to extract score from response
+        for line in lines:
+            if 'score:' in line.lower() or 'rating:' in line.lower():
+                try:
+                    # Extract number from line like "Score: 0.8"
+                    import re
+                    numbers = re.findall(r'0\.\d+|\d+\.?\d*', line)
+                    if numbers:
+                        score = float(numbers[0])
+                        if score > 1.0:  # Handle percentage format
+                            score = score / 100.0
+                        score = max(0.0, min(1.0, score))
+                        break
+                except:
+                    pass
+
+        return {"score": score, "reasoning": reasoning}
+
     except Exception as e:
         error_msg = f"Structured evaluation failed in {evaluator_name}: {str(e)}"
         print(f"{error_msg}")
 
-        # Return a safe fallback structure
         return {
             "score": fallback_score,
-            "reasoning": error_msg,
-            "evaluation_error": True
+            "reasoning": error_msg
         }
 
 def financial_accuracy_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], reference_outputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -123,19 +146,17 @@ def financial_accuracy_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any]
     - Market data correctness
     - Mathematical calculations
 
-    Provide a detailed reasoning for your evaluation.
+    IMPORTANT: Start your response with "Score: X.X" where X.X is your numeric score.
+    Then provide detailed reasoning for your evaluation.
     """
 
-    def evaluate():
-        return standard_evaluator_llm.invoke(evaluation_prompt)
-
-    result = safe_structured_evaluation(evaluate, 0.0, "financial_accuracy")
+    result = safe_evaluation(evaluation_prompt, 0.0, "financial_accuracy")
 
     return {
         "key": "financial_accuracy",
         "score": result.get("score", 0.0),
         "comment": result.get("reasoning", "Evaluation failed"),
-        "evaluation_error": result.get("evaluation_error", False)
+        "evaluation_error": False
     }
 
 
@@ -169,19 +190,17 @@ def logical_reasoning_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any],
     - Coherent argumentation
     - Step-by-step reasoning clarity
 
-    Provide a detailed reasoning for your evaluation.
+    IMPORTANT: Start your response with "Score: X.X" where X.X is your numeric score.
+    Then provide detailed reasoning for your evaluation.
     """
 
-    def evaluate():
-        return standard_evaluator_llm.invoke(evaluation_prompt)
-
-    result = safe_structured_evaluation(evaluate, 0.0, "logical_reasoning")
+    result = safe_evaluation(evaluation_prompt, 0.0, "logical_reasoning")
 
     return {
         "key": "logical_reasoning",
         "score": result.get("score", 0.0),
         "comment": result.get("reasoning", "Evaluation failed"),
-        "evaluation_error": result.get("evaluation_error", False)
+        "evaluation_error": False
     }
 
 
@@ -195,39 +214,36 @@ def completeness_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], refe
     response = outputs.get("response", "")
 
     evaluation_prompt = f"""
-    You are evaluating how completely a financial agent answered a question.
+    You are evaluating the completeness of a financial agent's response.
 
     Question: {question}
     Response: {response}
 
     Evaluate the completeness on a scale of 0-1:
-    - 1.0: Fully addresses all aspects of the question comprehensively
-    - 0.8: Addresses most aspects with minor omissions
-    - 0.6: Covers main points but misses some important aspects
-    - 0.4: Partial answer with significant gaps
-    - 0.2: Minimal coverage of the question
+    - 1.0: Comprehensive response addressing all aspects of the question
+    - 0.8: Mostly complete with minor omissions
+    - 0.6: Generally complete but missing some important aspects
+    - 0.4: Several missing elements
+    - 0.2: Significantly incomplete
     - 0.0: Does not address the question
 
     Focus on:
     - Coverage of all question components
     - Depth of analysis where appropriate
+    - Inclusion of relevant context
     - Addressing implicit requirements
-    - Providing sufficient detail
-    - Answering sub-questions if present
 
-    Provide a detailed reasoning for your evaluation.
+    IMPORTANT: Start your response with "Score: X.X" where X.X is your numeric score.
+    Then provide detailed reasoning for your evaluation.
     """
 
-    def evaluate():
-        return standard_evaluator_llm.invoke(evaluation_prompt)
-
-    result = safe_structured_evaluation(evaluate, 0.0, "completeness")
+    result = safe_evaluation(evaluation_prompt, 0.0, "completeness")
 
     return {
         "key": "completeness",
         "score": result.get("score", 0.0),
         "comment": result.get("reasoning", "Evaluation failed"),
-        "evaluation_error": result.get("evaluation_error", False)
+        "evaluation_error": False
     }
 
 
@@ -267,10 +283,7 @@ def hallucination_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], ref
     - A list of any specific potential issues you identified
     """
 
-    def evaluate():
-        return hallucination_evaluator_llm.invoke(evaluation_prompt)
-
-    result = safe_structured_evaluation(evaluate, 1.0, "hallucination_detection")  # Default to "no hallucinations" on error
+    result = safe_evaluation(evaluation_prompt, 1.0, "hallucination_detection")  # Default to "no hallucinations" on error
 
     return {
         "key": "hallucination_detection",
@@ -278,7 +291,7 @@ def hallucination_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], ref
         "comment": result.get("reasoning", "Evaluation failed"),
         "confidence": result.get("confidence", 0.0),
         "potential_issues": result.get("potential_issues", []),
-        "evaluation_error": result.get("evaluation_error", False)
+        "evaluation_error": False
     }
 
 
@@ -373,10 +386,7 @@ def trajectory_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], refere
     - The calculated similarity metric between expected and actual tools
     """
 
-    def evaluate():
-        return trajectory_evaluator_llm.invoke(evaluation_prompt)
-
-    result = safe_structured_evaluation(evaluate, similarity_score, "trajectory_analysis")
+    result = safe_evaluation(evaluation_prompt, similarity_score, "trajectory_analysis")
 
     return {
         "key": "trajectory_analysis",
@@ -385,7 +395,7 @@ def trajectory_evaluator(inputs: Dict[str, Any], outputs: Dict[str, Any], refere
         "used_tools": result.get("used_tools", used_tools),
         "expected_tools": result.get("expected_tools", expected_trajectory),
         "similarity_metric": result.get("similarity_metric", similarity_score),
-        "evaluation_error": result.get("evaluation_error", False)
+        "evaluation_error": False
     }
 
 

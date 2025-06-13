@@ -4,8 +4,12 @@ Contains realistic financial scenarios with expected answers and tool trajectori
 Updated for modern structured output tools (2024-2025).
 """
 from typing import List, Dict, Any
-from langsmith import Client
+
+# CRITICAL: Import config FIRST to set environment variables before LangSmith imports
 import config
+
+# Now import LangSmith after environment is configured
+from langsmith import Client
 
 # Initialize LangSmith client
 client = Client()

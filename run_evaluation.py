@@ -1,378 +1,189 @@
 """
-LangSmith Financial Agent Evaluation Demo
-Comprehensive evaluation experiment showcasing advanced agent evaluation capabilities.
+Financial Agent Evaluation with LangSmith
 
-This script demonstrates:
-- Multi-tool financial agent with ReAct reasoning
-- Custom LLM-as-judge evaluators
-- Trajectory analysis and tool usage evaluation
-- Financial accuracy, reasoning, and completeness metrics
-- Realistic financial scenarios with complex calculations
+Professional evaluation script for the financial agent using LangSmith's evaluation framework.
+Includes custom LLM-as-judge evaluators for comprehensive assessment.
 
 Usage:
-    python run_evaluation.py              # Run 3 examples (default for cost control)
-    python run_evaluation.py --max-examples 5    # Run 5 examples
-    python run_evaluation.py --all        # Run all 10 examples
+    python run_evaluation.py                    # Run 3 examples (cost control)
+    python run_evaluation.py --max-examples 5   # Run 5 examples
+    python run_evaluation.py --all              # Run all examples
 """
-import asyncio
 import pandas as pd
-from typing import Dict, List, Any
+from typing import Dict, Any
 import time
 import argparse
 from datetime import datetime
 
+# Import config first to set environment variables
+import config
+
+# Import LangSmith components
 from langsmith import Client
 from langsmith.evaluation import evaluate
 
-import config
-from financial_agent import run_financial_agent
+from financial_agent import run_financial_agent_with_project_routing
 from evaluation_dataset import create_langsmith_dataset, FINANCIAL_EVALUATION_DATASET
 from custom_evaluations import FINANCIAL_EVALUATORS
 
 # Initialize LangSmith client
 client = Client()
 
-class FinancialAgentEvaluationDemo:
-    """
-    Main class for running the comprehensive financial agent evaluation.
-    """
+def setup_evaluation_dataset(dataset_name: str, max_examples: int = None) -> str:
+    """Create and populate the evaluation dataset."""
+    print(f"\n📊 Setting up evaluation dataset: {dataset_name}")
 
-    def __init__(self, max_examples=None):
-        self.client = client
-        self.experiment_name = f"{config.EXPERIMENT_PREFIX}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        self.dataset_name = "Financial-Agent-Evaluation-Dataset"
-        self.dataset_id = None
-        self.evaluators = FINANCIAL_EVALUATORS
-        self.max_examples = max_examples  # New parameter to limit examples
+    dataset_id = create_langsmith_dataset(dataset_name, max_examples=max_examples)
+    examples_count = max_examples if max_examples else len(FINANCIAL_EVALUATION_DATASET)
 
-        print("Financial Agent Evaluation Demo Initialized")
-        print(f"Experiment Name: {self.experiment_name}")
-        print(f"Dataset: {self.dataset_name}")
-        print(f"Evaluators: {[e.__name__ for e in self.evaluators]}")
-        if self.max_examples:
-            print(f"Max Examples: {self.max_examples} (cost control enabled)")
+    print(f"✅ Dataset ready with {examples_count} examples")
+    return dataset_id
 
-    def setup_dataset(self) -> str:
-        """Create and populate the evaluation dataset."""
-        print("\n" + "="*60)
-        print("SETTING UP EVALUATION DATASET")
-        print("="*60)
+def run_financial_evaluation(dataset_name: str, max_examples: int = None) -> Dict[str, Any]:
+    """Run the financial agent evaluation experiment."""
+    print(f"\n🚀 Running evaluation experiment")
+    print(f"Target: {run_financial_agent_with_project_routing.__name__}")
+    print(f"Evaluators: {len(FINANCIAL_EVALUATORS)}")
 
-        try:
-            self.dataset_id = create_langsmith_dataset(self.dataset_name, max_examples=self.max_examples)
-            examples_count = self.max_examples if self.max_examples else len(FINANCIAL_EVALUATION_DATASET)
-            print(f"Dataset ready: {self.dataset_id}")
-            print(f"Examples to evaluate: {examples_count}")
-            return self.dataset_id
-        except Exception as e:
-            print(f"Dataset setup failed: {e}")
-            raise
+    # Prepare data source
+    data_source = dataset_name
+    if max_examples:
+        print(f"💰 Cost control: Sampling {max_examples} examples")
+        dataset = client.read_dataset(dataset_name=dataset_name)
+        all_examples = list(client.list_examples(dataset_id=dataset.id))
 
-    def run_evaluation_experiment(self) -> Dict[str, Any]:
-        """Run the comprehensive evaluation experiment with thread-based tracing."""
-        print("\n" + "="*60)
-        print("RUNNING EVALUATION EXPERIMENT WITH THREAD CONSOLIDATION")
-        print("="*60)
+        import random
+        random.seed(42)  # Reproducible sampling
+        data_source = random.sample(all_examples, min(max_examples, len(all_examples)))
 
-        print(f"Target Function: run_financial_agent")
-        print(f"Dataset: {self.dataset_name}")
-        print(f"Evaluators: {len(self.evaluators)} custom evaluators")
-        print(f"Max Concurrency: {config.MAX_CONCURRENCY}")
-        print(f"Thread-based tracing: ENABLED for consolidated traces")
+    # Create unique experiment name with timestamp
+    experiment_prefix = f"{config.EXPERIMENT_PREFIX}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
-        try:
-            # Prepare data source for evaluation
-            data_source = self.dataset_name
+    # Run evaluation
+    results = evaluate(
+        run_financial_agent_with_project_routing,
+        data=data_source,
+        evaluators=FINANCIAL_EVALUATORS,
+        experiment_prefix=experiment_prefix,
+        max_concurrency=config.MAX_CONCURRENCY,
+        metadata={
+            "evaluation_type": "financial_agent",
+            "max_examples": max_examples or "all",
+            "agent_version": "v2.1",
+            "dataset": dataset_name,
+            "timestamp": datetime.now().isoformat()
+        }
+    )
 
-            # If cost control is enabled, create a sample of examples
-            if self.max_examples:
-                print(f"Sampling {self.max_examples} random examples from full dataset")
+    print(f"✅ Evaluation completed!")
 
-                # Get all examples from the dataset
-                dataset = self.client.read_dataset(dataset_name=self.dataset_name)
-                all_examples = list(self.client.list_examples(dataset_id=dataset.id))
+    # Get experiment info
+    experiment_name = getattr(results, 'experiment_name', 'experiment-completed')
+    experiment_url = f"https://smith.langchain.com/experiments/{experiment_name}"
 
-                # Randomly sample the requested number of examples
-                import random
-                random.seed(42)  # For reproducibility
-                sampled_examples = random.sample(all_examples, min(self.max_examples, len(all_examples)))
+    return {
+        "results": results,
+        "experiment_name": experiment_name,
+        "experiment_url": experiment_url
+    }
 
-                # Use the sampled examples directly
-                data_source = sampled_examples
-                print(f"Selected {len(sampled_examples)} examples for evaluation")
+def analyze_evaluation_results(results) -> pd.DataFrame:
+    """Analyze evaluation results and display summary."""
+    print(f"\n📈 Analyzing results...")
 
-            # Run the evaluation with thread-based metadata for trace consolidation
-            results = evaluate(
-                run_financial_agent,  # target as first positional argument
-                data=data_source,
-                evaluators=self.evaluators,
-                experiment_prefix=config.EXPERIMENT_PREFIX,
-                max_concurrency=config.MAX_CONCURRENCY,
-                client=self.client,
-                # Add metadata to enable thread-based trace consolidation
-                metadata={
-                    "evaluation_type": "financial_agent_comprehensive",
-                    "thread_consolidation": "enabled",
-                    "evaluator_count": len(self.evaluators),
-                    "max_examples": self.max_examples or "all"
-                }
-            )
+    try:
+        df = results.to_pandas()
 
-            print(f"\nEvaluation completed with thread-based tracing!")
+        # Calculate evaluator performance
+        print(f"\n📊 EVALUATION SUMMARY:")
+        print("-" * 50)
 
-            # Debug: Print results object to understand what's available
-            print(f"\nDEBUG: Results object type: {type(results)}")
-            print(f"DEBUG: Results object attributes: {dir(results)}")
-            if hasattr(results, '__dict__'):
-                print(f"DEBUG: Results object dict: {vars(results)}")
+        for evaluator in FINANCIAL_EVALUATORS:
+            eval_name = evaluator.__name__
+            score_cols = [col for col in df.columns if eval_name in col and 'score' in col]
 
-            # Try to get experiment URL - handle different LangSmith versions
-            experiment_url = 'URL not available'
-            experiment_name = 'Experiment completed'
+            if score_cols:
+                scores = df[score_cols[0]].dropna()
+                if len(scores) > 0:
+                    avg_score = scores.mean()
+                    pass_rate = (scores >= 0.7).mean() * 100
+                    print(f"  {eval_name:25} | Avg: {avg_score:.3f} | Pass: {pass_rate:.1f}%")
 
-            # Check for various possible attribute names
-            if hasattr(results, 'experiment_url'):
-                experiment_url = results.experiment_url
-            elif hasattr(results, 'experiment_id'):
-                experiment_url = f"https://smith.langchain.com/o/{getattr(results, 'project_name', 'project')}/datasets/{getattr(results, 'experiment_id', 'experiment')}"
-            elif hasattr(results, '_experiment_name'):
-                experiment_name = results._experiment_name
-                experiment_url = f"LangSmith project: {config.LANGSMITH_PROJECT}"
-            elif hasattr(results, 'experiment_name'):
-                experiment_name = results.experiment_name
-                # Try to construct URL from experiment name
-                experiment_url = f"https://smith.langchain.com/o/{config.LANGSMITH_PROJECT}/experiments/{experiment_name}"
-            elif hasattr(results, '_results') and len(results._results) > 0:
-                # Extract from the first result's run information
-                first_result = results._results[0]
-                if 'run' in first_result and hasattr(first_result['run'], 'session_id'):
-                    session_id = first_result['run'].session_id
-                    experiment_url = f"https://smith.langchain.com/o/{config.LANGSMITH_PROJECT}/sessions/{session_id}"
-                elif 'example' in first_result and hasattr(first_result['example'], 'link'):
-                    # Use the example link as a fallback
-                    example_link = first_result['example'].link
-                    # Extract the organization ID from the example link
-                    if '/o/' in example_link:
-                        org_part = example_link.split('/o/')[1].split('/')[0]
-                        experiment_url = f"https://smith.langchain.com/o/{org_part}/datasets/{self.dataset_id}"
+        # Category performance
+        if 'outputs.category' in df.columns:
+            print(f"\n📂 PERFORMANCE BY CATEGORY:")
+            print("-" * 50)
 
-            if hasattr(results, 'experiment_name'):
-                experiment_name = results.experiment_name
-            elif hasattr(results, '_experiment_name'):
-                experiment_name = results._experiment_name
-            elif hasattr(results, '_manager') and hasattr(results._manager, 'experiment_name'):
-                experiment_name = results._manager.experiment_name
-                # Try to construct a proper experiment URL
-                if hasattr(results._manager, 'client') and hasattr(results._manager.client, '_get_tenant_id'):
-                    try:
-                        tenant_id = results._manager.client._get_tenant_id()
-                        experiment_url = f"https://smith.langchain.com/o/{tenant_id}/experiments/{experiment_name}"
-                    except:
-                        experiment_url = f"https://smith.langchain.com/experiments/{experiment_name}"
+            category_scores = df.groupby('outputs.category').agg({
+                col: 'mean' for col in df.columns
+                if 'score' in col and any(e.__name__ in col for e in FINANCIAL_EVALUATORS)
+            }).round(3)
 
-            print(f"View consolidated thread traces: {experiment_url}")
-            print(f"🧵 Each evaluation run is now consolidated in its own thread for better visibility")
+            for category, scores in category_scores.iterrows():
+                avg_score = scores.mean() if not scores.empty else 0
+                print(f"  {category:25} | Avg: {avg_score:.3f}")
 
-            return {
-                "experiment_url": experiment_url,
-                "experiment_name": experiment_name,
-                "results": results
-            }
+        return df
 
-        except Exception as e:
-            print(f"Evaluation failed: {e}")
-            raise
+    except Exception as e:
+        print(f"❌ Analysis failed: {e}")
+        return pd.DataFrame()
 
-    def analyze_results(self, results) -> pd.DataFrame:
-        """Analyze and summarize the evaluation results."""
-        print("\n" + "="*60)
-        print("ANALYZING EVALUATION RESULTS")
-        print("="*60)
-
-        try:
-            # Convert results to DataFrame for analysis
-            df = results.to_pandas()
-
-            # Calculate summary statistics
-            evaluator_columns = [col for col in df.columns if any(eval_name in col for eval_name in
-                                [e.__name__ for e in self.evaluators])]
-
-            print("\nEVALUATION SUMMARY:")
-            print("-" * 40)
-
-            for eval_name in [e.__name__ for e in self.evaluators]:
-                score_cols = [col for col in df.columns if eval_name in col and 'score' in col]
-                if score_cols:
-                    scores = df[score_cols[0]].dropna()
-                    if len(scores) > 0:
-                        avg_score = scores.mean()
-                        pass_rate = (scores >= 0.7).mean() * 100
-                        print(f"  {eval_name:20} | Avg: {avg_score:.3f} | Pass Rate: {pass_rate:.1f}%")
-
-            # Category analysis
-            if 'outputs.category' in df.columns:
-                print(f"\nPERFORMANCE BY CATEGORY:")
-                print("-" * 40)
-                category_performance = df.groupby('outputs.category').agg({
-                    col: 'mean' for col in evaluator_columns if 'score' in col
-                }).round(3)
-                print(category_performance)
-
-            # Complexity analysis
-            if 'outputs.complexity' in df.columns:
-                print(f"\nPERFORMANCE BY COMPLEXITY:")
-                print("-" * 40)
-                complexity_performance = df.groupby('outputs.complexity').agg({
-                    col: 'mean' for col in evaluator_columns if 'score' in col
-                }).round(3)
-                print(complexity_performance)
-
-            return df
-
-        except Exception as e:
-            print(f"Results analysis failed: {e}")
-            return pd.DataFrame()
-
-    def identify_insights(self, df: pd.DataFrame) -> List[str]:
-        """Generate insights from the evaluation results."""
-        insights = []
-
-        try:
-            # Tool usage insights
-            if 'outputs.unique_tools_used' in df.columns:
-                tool_usage = df['outputs.unique_tools_used'].apply(lambda x: len(x) if x else 0)
-                avg_tools = tool_usage.mean()
-                insights.append(f"Average tools used per query: {avg_tools:.1f}")
-
-            # Performance insights
-            score_columns = [col for col in df.columns if 'score' in col and any(eval_name in col for eval_name in
-                            [e.__name__ for e in self.evaluators])]
-
-            if score_columns:
-                overall_performance = df[score_columns].mean().mean()
-                insights.append(f"Overall agent performance: {overall_performance:.1%}")
-
-                # Find best and worst performing categories
-                if 'outputs.category' in df.columns and len(score_columns) > 0:
-                    category_scores = df.groupby('outputs.category')[score_columns[0]].mean()
-                    best_category = category_scores.idxmax()
-                    worst_category = category_scores.idxmin()
-                    insights.append(f"Best performing category: {best_category} ({category_scores[best_category]:.2f})")
-                    insights.append(f"Most challenging category: {worst_category} ({category_scores[worst_category]:.2f})")
-
-            # Trajectory insights
-            trajectory_cols = [col for col in df.columns if 'trajectory_quality' in col and 'score' in col]
-            if trajectory_cols:
-                trajectory_score = df[trajectory_cols[0]].mean()
-                insights.append(f"Tool usage efficiency: {trajectory_score:.1%}")
-
-        except Exception as e:
-            insights.append(f"Error generating insights: {e}")
-
-        return insights
-
-    def run_full_demo(self) -> Dict[str, Any]:
-        """Run the complete evaluation demo from start to finish."""
-        print("\n" + "STARTING COMPREHENSIVE FINANCIAL AGENT EVALUATION DEMO")
-        print("="*80)
-
-        start_time = time.time()
-
-        try:
-            # Step 1: Setup dataset
-            dataset_id = self.setup_dataset()
-
-            # Step 2: Run evaluation experiment
-            results = self.run_evaluation_experiment()
-
-            # Step 3: Analyze results
-            df = self.analyze_results(results['results'])
-
-            # Step 4: Generate insights
-            insights = self.identify_insights(df)
-
-            # Step 5: Display final summary
-            elapsed_time = time.time() - start_time
-
-            print("\n" + "DEMO COMPLETED SUCCESSFULLY!")
-            print("="*60)
-            print(f"Total Runtime: {elapsed_time:.1f} seconds")
-            print(f"View Full Results: {results.get('experiment_url', 'URL not available')}")
-            examples_run = self.max_examples if self.max_examples else len(FINANCIAL_EVALUATION_DATASET)
-            print(f"Examples Evaluated: {examples_run}")
-            print(f"Evaluation Metrics: {len(self.evaluators)}")
-
-            print("\nEXECUTIVE SUMMARY:")
-            for insight in insights[:5]:  # Top 5 insights
-                print(f"  • {insight}")
-
-            return {
-                "success": True,
-                "experiment_url": results.get('experiment_url', 'URL not available'),
-                "dataset_id": dataset_id,
-                "insights": insights,
-                "runtime": elapsed_time,
-                "dataframe": df
-            }
-
-        except Exception as e:
-            print(f"\nDemo failed: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "runtime": time.time() - start_time
-            }
-
-
-
-if __name__ == "__main__":
-    """
-    Main execution for the LangSmith Financial Agent Evaluation Demo
-
-    This script showcases:
-    1. Advanced financial agent with multiple tools
-    2. Comprehensive custom evaluators (LLM-as-judge)
-    3. Realistic financial scenarios
-    4. Trajectory analysis and tool usage optimization
-    5. Production-ready evaluation framework
-    """
-
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Financial Agent Evaluation Demo')
+def main():
+    """Main execution function."""
+    parser = argparse.ArgumentParser(description='Financial Agent Evaluation')
     parser.add_argument('--max-examples', type=int, default=3,
-                        help='Maximum number of examples to run (default: 3 for cost control)')
+                        help='Maximum examples to evaluate (default: 3)')
     parser.add_argument('--all', action='store_true',
-                        help='Run all examples (ignores --max-examples)')
+                        help='Evaluate all examples')
     args = parser.parse_args()
 
-    # Determine how many examples to run (priority: CLI args > env var > default)
+    # Determine number of examples
     if args.all:
-        MAX_EXAMPLES = None
-        print("Running ALL examples (full evaluation)")
-    elif hasattr(config, 'MAX_EXAMPLES') and config.MAX_EXAMPLES is not None:
-        MAX_EXAMPLES = config.MAX_EXAMPLES
-        print(f"COST CONTROL (from env): Running {MAX_EXAMPLES} out of {len(FINANCIAL_EVALUATION_DATASET)} examples")
+        max_examples = None
+        print("🚀 Running full evaluation (all examples)")
     else:
-        MAX_EXAMPLES = args.max_examples
-        print(f"COST CONTROL: Running {MAX_EXAMPLES} out of {len(FINANCIAL_EVALUATION_DATASET)} examples")
+        max_examples = args.max_examples
+        print(f"💰 Cost control: Running {max_examples} examples")
 
-    print("LangChain Interview Demo: Financial Agent Evaluation with LangSmith")
     print("="*80)
-    print(f"Examples to evaluate: {MAX_EXAMPLES if MAX_EXAMPLES else len(FINANCIAL_EVALUATION_DATASET)}")
+    print("FINANCIAL AGENT EVALUATION")
     print("="*80)
 
-    # Run demo with cost control
-    demo = FinancialAgentEvaluationDemo(max_examples=MAX_EXAMPLES)
-    results = demo.run_full_demo()
+    start_time = time.time()
+    # Use persistent dataset, create experiments with timestamps
+    dataset_name = "Financial-Agent-Evaluation-Dataset"
 
-    if results["success"]:
-        print(f"\nDemo completed successfully!")
-        print(f"Share this URL with your interviewer: {results.get('experiment_url', 'URL not available')}")
+    try:
+        # Setup dataset
+        dataset_id = setup_evaluation_dataset(dataset_name, max_examples)
 
-    else:
-        print(f"Demo failed: {results['error']}")
-        print("Check your API keys and configuration in config.py")
+        # Run evaluation
+        eval_results = run_financial_evaluation(dataset_name, max_examples)
 
-    print("\n" + "="*80)
-    print("Complete")
-    print("="*80)
+        # Analyze results
+        df = analyze_evaluation_results(eval_results['results'])
+
+        # Summary
+        runtime = time.time() - start_time
+        examples_evaluated = max_examples if max_examples else len(FINANCIAL_EVALUATION_DATASET)
+
+        print(f"\n🎉 EVALUATION COMPLETE")
+        print("="*50)
+        print(f"Runtime: {runtime:.1f}s")
+        print(f"Examples: {examples_evaluated}")
+        print(f"Evaluators: {len(FINANCIAL_EVALUATORS)}")
+        print(f"Results: {eval_results['experiment_url']}")
+
+        return {
+            "success": True,
+            "experiment_url": eval_results['experiment_url'],
+            "runtime": runtime
+        }
+
+    except Exception as e:
+        print(f"\n❌ Evaluation failed: {e}")
+        return {"success": False, "error": str(e)}
+
+if __name__ == "__main__":
+    main()

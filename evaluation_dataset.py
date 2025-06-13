@@ -4,17 +4,13 @@ Contains realistic financial scenarios with expected answers and tool trajectori
 Updated for modern structured output tools (2024-2025).
 """
 from typing import List, Dict, Any
-
-# CRITICAL: Import config FIRST to set environment variables before LangSmith imports
 import config
-
-# Now import LangSmith after environment is configured
 from langsmith import Client
 
-# Initialize LangSmith client
+
 client = Client()
 
-# Financial evaluation dataset with realistic scenarios - UPDATED FOR MODERN TOOLS
+# Financial evaluation dataset with realistic scenarios
 FINANCIAL_EVALUATION_DATASET = [
     {
         "input": "What is Tesla's current stock price and market cap? How does it compare to Apple's market cap?",
@@ -86,7 +82,6 @@ FINANCIAL_EVALUATION_DATASET = [
         "category": "stock_analysis",
         "complexity": "medium"
     },
-    # NEW EXAMPLES TO TEST MORE TOOL COMBINATIONS
     {
         "input": "Analyze Apple's stock performance over the last 2 years. Calculate the CAGR and compare it to the S&P 500.",
         "expected_response": "Apple's stock has shown strong performance over the last 2 years. From approximately $150 to $199 (current), representing a CAGR of roughly 15-16%. This outperforms the S&P 500's typical 8-10% annual returns. Key drivers include AI integration announcements, strong iPhone sales, services growth, and the Vision Pro launch. However, performance has been somewhat volatile due to China market concerns and AI competition.",
@@ -124,7 +119,6 @@ FINANCIAL_EVALUATION_DATASET = [
     }
 ]
 
-# Updated expected tool trajectories for modern tools
 EXPECTED_TRAJECTORIES = {
     "stock_analysis": ["get_stock_price", "tavily_search_results_json"],
     "growth_analysis": ["get_company_info", "get_financial_history", "calculate_compound_growth", "tavily_search_results_json"],
@@ -137,8 +131,7 @@ EXPECTED_TRAJECTORIES = {
     "market_research": ["tavily_search_results_json", "get_stock_price", "get_financial_history"]
 }
 
-# Available modern tools for validation
-AVAILABLE_MODERN_TOOLS = [
+AVALIBLE_FINANCIAL_TOOLS = [
     "tavily_search_results_json",
     "get_stock_price",
     "get_company_info",
@@ -255,8 +248,8 @@ def _validate_expected_tools():
     for example in FINANCIAL_EVALUATION_DATASET:
         all_expected_tools.update(example.get("expected_tools", []))
 
-    missing_tools = all_expected_tools - set(AVAILABLE_MODERN_TOOLS)
-    extra_tools = set(AVAILABLE_MODERN_TOOLS) - all_expected_tools
+    missing_tools = all_expected_tools - set(AVALIBLE_FINANCIAL_TOOLS)
+    extra_tools = set(AVALIBLE_FINANCIAL_TOOLS) - all_expected_tools
 
     if missing_tools:
         print(f"Warning: Expected tools not available: {missing_tools}")
@@ -265,7 +258,7 @@ def _validate_expected_tools():
         print(f"Available tools not used in examples: {extra_tools}")
 
     print(f"Validation complete. Expected tools: {sorted(all_expected_tools)}")
-    print(f"Available tools: {sorted(AVAILABLE_MODERN_TOOLS)}")
+    print(f"Available tools: {sorted(AVALIBLE_FINANCIAL_TOOLS)}")
 
 def _create_dataset_splits(dataset_id: str, examples: list):
     """Create dataset splits based on categories and complexity."""
@@ -305,7 +298,7 @@ def _create_dataset_splits(dataset_id: str, examples: list):
 if __name__ == "__main__":
     print(f"Modern Financial Evaluation Dataset v2.0")
     print(f"Total examples: {len(FINANCIAL_EVALUATION_DATASET)}")
-    print(f"Available modern tools: {len(AVAILABLE_MODERN_TOOLS)}")
+    print(f"Available modern tools: {len(AVALIBLE_FINANCIAL_TOOLS)}")
 
     # Validate tools
     _validate_expected_tools()

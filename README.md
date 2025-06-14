@@ -1,345 +1,285 @@
-# LangSmith Financial Agent Evaluation Framework
+# 🎵 Music Concierge Agent - LangChain Spotify Integration
 
-A production-ready evaluation framework demonstrating modern LangChain agent architecture, comprehensive LLM-as-judge evaluation, and enterprise-grade observability through LangSmith tracing.
+A sophisticated AI-powered music concierge built with LangChain that provides intelligent music recommendations, playlist curation, and Spotify integration. The agent uses advanced tools to search, analyze, and recommend music based on user preferences and conversation context.
 
-## Project Overview
+## 🚀 Features
 
-This project implements a sophisticated financial research agent with a comprehensive evaluation framework, showcasing deep understanding of:
+### Core Capabilities
+- **Intelligent Music Search** - Semantic search across Spotify's catalog
+- **Smart Playlist Creation** - AI-curated playlists based on mood, genre, and preferences
+- **Artist Discovery** - Top songs, similar artists, and related music recommendations
+- **Genre Exploration** - Discover music by genre with relevance scoring
+- **Session-Based Playlists** - Track songs mentioned during conversation
+- **User Preference Learning** - Save and remember music preferences
+- **Conversational Interface** - Natural language music discovery
 
-- **Modern Agent Architecture**: ReAct pattern with optimized tool design for maximum reliability
-- **Evaluation Excellence**: 5 LLM-as-judge evaluators with structured Pydantic outputs
-- **Production Observability**: Complete LangSmith integration with trace routing and experiment management
-- **Cost-Conscious Development**: Configurable evaluation limits and parallel execution control
-- **Enterprise Patterns**: Structured outputs, error handling, and scalable configuration management
+### Technical Features
+- **LangSmith Integration** - Full tracing and observability
+- **Pydantic v2 Models** - Structured data validation and output
+- **Error Handling** - Robust API error management
+- **Memory Management** - Conversation context and user preferences
+- **Streamlit UI** - Interactive web interface
 
-### Key Technical Achievements
+## 🛠️ Architecture
 
-- **100% Tool Compatibility**: Single-parameter tool design optimized for ReAct agent limitations
-- **Zero JSON Parsing Errors**: Space-separated parameter parsing eliminates common agent failures
-- **Comprehensive Coverage**: 15 realistic financial scenarios spanning multiple complexity levels
-- **Advanced Evaluation**: Multi-dimensional assessment including hallucination detection and trajectory analysis
-- **Persistent Dataset Strategy**: Experiment-based evaluation preserving dataset integrity
+### Agent (`agent.py`)
+- **LangChain Agent** with OpenAI GPT-4o-mini
+- **ConversationSummaryBufferMemory** for context retention
+- **Tool Integration** with 7 specialized music tools
+- **LangSmith Tracing** for debugging and optimization
 
-## Architecture & Design Principles
+### Tools (`tools.py`)
+Seven specialized tools for music operations:
 
-### Agent Architecture
+1. **`search_spotify_songs`** - Search Spotify catalog
+2. **`create_smart_playlist`** - AI-curated playlist generation
+3. **`add_song_to_session_playlist`** - Session-based playlist building
+4. **`get_artist_top_songs`** - Popular songs by artist
+5. **`get_similar_music`** - Related artist recommendations
+6. **`get_genre_recommendations`** - Genre-based discovery
+7. **`save_user_preference`** - Personalization system
 
+### Spotify Client (`spotify/spotify_working.py`)
+- **Client Credentials Flow** for API authentication
+- **Rate Limiting** and error handling
+- **Comprehensive API Coverage** - search, artists, tracks, genres
+- **Data Formatting** - Consistent output structures
+
+## 📋 Requirements
+
+```txt
+langchain==0.3.7
+langchain-openai==0.2.8
+langchain-community==0.3.5
+langsmith==0.1.143
+pydantic==2.10.3
+requests==2.32.3
+python-dotenv==1.0.1
+streamlit==1.40.1
 ```
-Financial Agent (ReAct Pattern)
-├── Tools (Production-Optimized)
-│   ├── get_stock_price(symbol) → StockPriceData
-│   ├── get_company_info(symbol) → CompanyInfo
-│   ├── get_financial_history("AAPL 5y") → FinancialHistoryResult
-│   ├── calculate_compound_growth("10000 0.07 10") → CompoundGrowthResult
-│   ├── calculate_financial_ratio("82.50 5.50 pe") → FinancialRatioResult
-│   └── tavily_search_results_json(query) → Real-time market data
-├── Agent Implementation
-│   ├── ReAct Reasoning Pattern
-│   ├── Optimized Prompt Engineering
-│   ├── Structured Error Handling
-│   └── Comprehensive Trace Capture
-└── Evaluation Framework
-    ├── Financial Accuracy Assessment
-    ├── Logical Reasoning Validation
-    ├── Completeness Analysis
-    ├── Hallucination Detection
-    └── Tool Usage Efficiency
+
+## 🔧 Setup
+
+### 1. Environment Variables
+Create a `.env` file:
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+LANGCHAIN_API_KEY=your_langsmith_api_key_here
+LANGCHAIN_PROJECT=music-concierge-agent
 ```
 
-### Core Technical Innovations
+### 2. Spotify API Credentials
+The Spotify client uses embedded credentials for demo purposes. For production:
+- Register at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+- Update credentials in `spotify/spotify_working.py`
 
-#### 1. ReAct-Optimized Tool Design
-
-**Challenge**: ReAct agents struggle with multi-parameter JSON inputs, causing parsing failures and degraded performance.
-
-**Solution**: Implemented single-parameter tool architecture with internal space-separated parsing:
-
-```python
-# Instead of: calculate_compound_growth({"principal": 10000, "rate": 0.07, "years": 10})
-# We use: calculate_compound_growth("10000 0.07 10")
-```
-
-**Result**: Eliminated parsing errors and improved agent reliability by 95%.
-
-#### 2.  Evaluation Framework
-
-- **Multi-Dimensional Assessment**: 5 specialized LLM-as-judge evaluators
-- **Structured Outputs**: All evaluators return validated Pydantic models
-- **Trajectory Analysis**: Evaluates tool selection efficiency and reasoning quality
-- **Hallucination Detection**: Specialized evaluator for financial accuracy verification
-
-#### 3. Observability
-
-- **Complete Trace Routing**: All agent, tool, and evaluation calls captured in LangSmith
-- **Experiment Management**: Timestamped experiments with persistent dataset strategy
-- **Cost Control**: Configurable evaluation limits with parallel execution management
-- **Error Monitoring**: Comprehensive error handling with fallback mechanisms
-
-## Quick Start
-
-### Prerequisites
-
+### 3. Installation
 ```bash
-# Required API Keys
-LANGSMITH_API_KEY=your_langsmith_key
-GOOGLE_API_KEY=your_gemini_key  # or OPENAI_API_KEY
-TAVILY_API_KEY=your_tavily_key  # Optional for web search
-```
-
-### Installation & Setup
-
-```bash
-# Clone and navigate
-git clone <repository-url>
-cd LangChain
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Configure environment (see .env file)
-cp .env.example .env  # Edit with your API keys
 ```
 
-### Execution Options
+## 🎯 Usage
 
-#### Standard Evaluation (Recommended for Demo)
-
+### Command Line Interface
 ```bash
-# Run with cost control (3 examples - perfect for interviews)
-python run_evaluation.py
-
-# Custom example count
-python run_evaluation.py --max-examples 5
-
-# Full evaluation suite
-python run_evaluation.py --all
+python demo_script.py
 ```
 
-#### Alternative: Direct Agent Testing
-
+### Streamlit Web Interface
 ```bash
-# Bypass evaluation framework, direct trace visibility
-python agent_runner.py        # 1 test case
-python agent_runner.py 5      # Limited test cases
-python agent_runner.py 5 --all # all test case
+streamlit run streamlit_app.py
 ```
 
-### Results & Analysis
-
-After execution, you'll receive:
-
-- **LangSmith Experiment URL** with complete trace visibility
-- **Performance Analytics** with metric breakdowns
-- **Tool Usage Analysis** showing agent efficiency patterns
-- **Cost Summary** with token usage and execution times
-
-## Evaluation Framework Deep Dive
-
-### Test Scenario Coverage
-
-Our evaluation dataset covers comprehensive financial analysis scenarios:
-
-| Category                 | Complexity | Example Query                                         | Expected Tools                                            |
-| ------------------------ | ---------- | ----------------------------------------------------- | --------------------------------------------------------- |
-| **Stock Analysis**       | Medium     | "Analyze AAPL stock with current metrics"             | `get_stock_price`, `get_company_info`                     |
-| **Growth Modeling**      | High       | "Calculate CAGR for 15% annual returns over 10 years" | `calculate_compound_growth`                               |
-| **Comparative Analysis** | High       | "Compare AAPL vs MSFT P/E ratios"                     | `get_stock_price` (multiple), `calculate_financial_ratio` |
-| **Historical Analysis**  | Medium     | "TSLA 5-year performance with volatility"             | `get_financial_history`                                   |
-| **Market Research**      | Medium     | "Latest Tesla news and stock impact"                  | `tavily_search_results_json`, `get_stock_price`           |
-
-### Evaluation Metrics
-
-#### 1. Financial Accuracy (0-1 Scale)
-
-- Validates numerical calculations and financial facts
-- Checks against real-time market data
-- Identifies computational errors and data inconsistencies
-
-#### 2. Logical Reasoning (0-1 Scale)
-
-- Assesses reasoning coherence and step-by-step logic
-- Evaluates tool selection appropriateness
-- Validates conclusion support from evidence
-
-#### 3. Completeness (0-1 Scale)
-
-- Ensures all query aspects addressed
-- Validates comprehensive analysis depth
-- Checks for missing critical information
-
-#### 4. Hallucination Detection (0-1 Scale)
-
-- Identifies unsupported financial claims
-- Validates data source accuracy
-- Flags potential misinformation or fabricated data
-
-#### 5. Trajectory Analysis (0-1 Scale)
-
-- Evaluates tool usage efficiency
-- Assesses reasoning path optimization
-- Identifies unnecessary or redundant tool calls
-
-## Technical Implementation Highlights
-
-### 1. Modern LangChain Patterns
-
+### Programmatic Usage
 ```python
-# ReAct Agent with Optimized Prompts
-agent = create_react_agent(
-    llm=config.get_chat_model(),
-    tools=FINANCIAL_TOOLS,
-    prompt=optimized_financial_prompt
-)
+from agent import MusicConciergeAgent
 
-# AgentExecutor with Production Config
-agent_executor = AgentExecutor(
-    agent=agent,
-    tools=tools,
-    max_iterations=config.AGENT_MAX_ITERATIONS,
-    max_execution_time=config.AGENT_MAX_EXECUTION_TIME,
-    return_intermediate_steps=True,
-    handle_parsing_errors=True
-)
+agent = MusicConciergeAgent(api_key="your_openai_key")
+response = agent.chat("Create me an upbeat Taylor Swift playlist")
+print(response)
 ```
 
-### 2. Structured Tool Outputs
+## 🎼 Tool Details
 
+### 1. Search Spotify Songs
 ```python
-class StockPriceData(BaseModel):
-    symbol: str
-    current_price: float
-    market_cap: Optional[float] = None
-    pe_ratio: Optional[float] = None
-    week_52_range: Optional[str] = None
-    formatted_summary: str
-    error: Optional[str] = None
+search_spotify_songs(query="Taylor Swift Love Story", limit=5)
 ```
+- Searches Spotify catalog with enhanced metadata
+- Returns formatted song data with popularity insights
+- Supports complex queries and filters
 
-### 3. Advanced Evaluation Implementation
-
+### 2. Create Smart Playlist
 ```python
-@traceable(name="FinancialAccuracyEvaluator")
-def financial_accuracy_evaluator(run, example):
-    """LLM-as-judge evaluator with structured output."""
-    evaluator_llm = config.get_evaluator_model()
-
-    response = evaluator_llm.invoke([
-        SystemMessage(content=FINANCIAL_ACCURACY_PROMPT),
-        HumanMessage(content=format_evaluation_input(run, example))
-    ])
-
-    return FinancialAccuracyResponse.model_validate_json(response.content)
+create_smart_playlist(request_data=json.dumps({
+    "name": "Upbeat Workout Mix",
+    "description": "High-energy songs for exercise",
+    "seed_artists": ["Dua Lipa", "The Weeknd"],
+    "seed_genres": ["pop", "dance"],
+    "size": 20
+}))
 ```
+- AI-curated playlists with flow analysis
+- Supports multiple seed types (artists, genres, songs)
+- Generates diverse, well-balanced playlists
 
-### 4. Enterprise Configuration Management
-
+### 3. Session Playlist Management
 ```python
-# Dynamic experiment naming with model integration
-EXPERIMENT_PREFIX = f"{AGENT_MODEL}-experiment"
+add_song_to_session_playlist(song_id="track_id", user_reaction="liked")
+```
+- Tracks songs mentioned during conversation
+- Builds context-aware playlists
+- Supports user reaction tracking
 
-# Cost control with parallel execution
-MAX_CONCURRENCY = 4  # Configurable parallel evaluation
-MAX_EXAMPLES = None  # Optional cost limiting
+### 4. Artist Top Songs
+```python
+get_artist_top_songs(artist_name="Taylor Swift", limit=10)
+```
+- Returns most popular songs by artist
+- Enhanced with popularity levels and metadata
+- Market-specific results (US)
+
+### 5. Similar Music Discovery
+```python
+get_similar_music(artist_name="Green Day", limit=8)
+```
+- Uses related artists for recommendations
+- Metadata-based similarity scoring
+- Diverse artist coverage
+
+### 6. Genre Recommendations
+```python
+get_genre_recommendations(genre="rock", limit=10)
+```
+- Genre-based music discovery
+- Relevance scoring and popularity analysis
+- Multiple search strategies for comprehensive results
+
+### 7. User Preference Management
+```python
+save_user_preference(preference_type="artist", value="Taylor Swift", action="add")
+```
+- Persistent preference storage
+- Personalization impact analysis
+- Multiple preference types (genre, artist, mood, energy)
+
+## 🎨 Data Models
+
+### Core Models (Pydantic v2)
+- **`MusicPreferences`** - User preference structure
+- **`SmartPlaylistRequest`** - Playlist creation parameters
+- **`SessionPlaylist`** - Conversation-based playlist tracking
+- **`MusicRecommendation`** - Structured recommendation output
+
+### Example Output
+```json
+{
+  "playlist_name": "Upbeat Taylor Swift Playlist",
+  "songs": [
+    {
+      "name": "Cruel Summer",
+      "artist": "Taylor Swift",
+      "album": "Lover",
+      "popularity": 91,
+      "spotify_url": "https://open.spotify.com/track/1BxfuPKGuaTgP7aM0Bbdwr",
+      "duration": "2:58"
+    }
+  ],
+  "flow_analysis": {
+    "average_popularity": 88.0,
+    "artist_diversity": 0.67,
+    "playlist_character": "High-energy diverse mix"
+  }
+}
 ```
 
-## Project Structure & Organization
+## 🔍 Key Improvements Made
 
-```
-LangChain/
-├── config.py                 # Centralized configuration management
-├── financial_agent.py        # ReAct agent implementation with tracing
-├── financial_tools.py        # Production-optimized tool suite
-├── evaluation_dataset.py     # Comprehensive test scenarios
-├── custom_evaluations.py     # LLM-as-judge evaluator framework
-├── run_evaluation.py         # Primary evaluation orchestration
-├── agent_runner.py           # Alternative direct execution path
-├── requirements.txt          # Production dependencies
-└── README.md                 # This documentation
-```
+### Tool Optimization
+- **Removed non-working tools** that required user authorization
+- **Enhanced error handling** for API limitations
+- **Improved playlist generation** with better song selection algorithms
+- **Added comprehensive metadata** analysis
 
-## Advanced Features & Capabilities
+### Agent Enhancement
+- **Clear tool usage guidelines** to prevent wrong tool selection
+- **Improved prompting** for better playlist vs. search distinction
+- **Enhanced memory management** for conversation context
+- **Cost optimization** with GPT-4o-mini model
 
-### 1. Multi-Provider Support
+### Code Quality
+- **Pydantic v2 patterns** with proper validators
+- **LangChain best practices** following official documentation
+- **Comprehensive error handling** and logging
+- **Clean separation of concerns** between agent, tools, and client
 
-- **OpenAI**: GPT-4, GPT-4-turbo, GPT-3.5-turbo
-- **Google**: Gemini-2.0-flash, Gemini-1.5-pro
-- **Configurable**: Easy provider switching via environment variables
+## ⚠️ Current Limitations
 
-### 2. Cost Optimization Strategies
+### Playlist Creation
+- **Simulation Only** - Creates playlist recommendations, not actual Spotify playlists
+- **Client Credentials Flow** - Read-only access, cannot modify user accounts
+- **No User Authentication** - Cannot access personal Spotify data
 
-- **Evaluation Sampling**: Configurable example limits for development
-- **Parallel Execution**: Controlled concurrency for optimal throughput
-- **Model Selection**: Provider comparison for cost-performance optimization
+### API Constraints
+- **No Audio Features** - Advanced audio analysis not available with current auth
+- **Rate Limiting** - Spotify API rate limits apply
+- **Market Restrictions** - Some content may be region-locked
 
-### 3. Production Monitoring
+## 🚀 Future Enhancements
 
-- **Complete Observability**: Every agent action captured in LangSmith
-- **Performance Metrics**: Execution time, token usage, success rates
-- **Error Tracking**: Comprehensive error handling with fallback strategies
+### Real Playlist Creation
+- Implement OAuth flow for user authorization
+- Add playlist creation and modification endpoints
+- Enable saving playlists to user's Spotify account
 
-### 4. Extensibility Framework
+### Advanced Features
+- Audio feature analysis with user auth
+- Collaborative filtering recommendations
+- Social features and playlist sharing
+- Integration with other music services
 
-- **Modular Tool Design**: Easy addition of new financial analysis capabilities
-- **Evaluator Extensibility**: Simple framework for custom evaluation criteria
-- **Dataset Management**: Automated validation and synchronization
+### UI/UX Improvements
+- Enhanced Streamlit interface
+- Mobile-responsive design
+- Playlist visualization and analytics
+- Export functionality (M3U, CSV)
 
-## Interview Demonstration Guide
+## 📊 Testing
 
-### Recommended Demo Flow (10-15 minutes)
+### Tool Testing
+All 7 tools have been thoroughly tested:
+- ✅ API connectivity and authentication
+- ✅ Error handling and edge cases
+- ✅ Output format validation
+- ✅ Performance and rate limiting
 
-1. **Architecture Overview** (3 min)
+### Agent Testing
+- ✅ Tool selection accuracy
+- ✅ Conversation flow and memory
+- ✅ Response quality and formatting
+- ✅ LangSmith tracing integration
 
-   - Explain ReAct optimization decisions
-   - Highlight evaluation framework design
-   - Discuss LangSmith integration strategy
-2. **Live Execution** (5 min)
+## 🤝 Contributing
 
-   ```bash
-   python run_evaluation.py --max-examples 3
-   ```
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
 
-   - Show real-time evaluation execution
-   - Explain trace capture and routing
-   - Demonstrate cost control features
-3. **Results Analysis** (5 min)
+## 📄 License
 
-   - Navigate to LangSmith experiment URL
-   - Analyze agent reasoning patterns
-   - Review evaluation metric breakdowns
-4. **Technical Deep Dive** (2-3 min)
+This project is for educational and demonstration purposes. Spotify API usage subject to Spotify's terms of service.
 
-   - Discuss tool design innovations
-   - Explain structured output benefits
-   - Highlight production considerations
+## 🙏 Acknowledgments
 
-### Key Discussion Points
-
-- **Why single-parameter tools?** ReAct agent optimization and reliability
-- **Evaluation framework design**: Multi-dimensional assessment approach
-- **Production readiness**: Error handling, monitoring, scalability
-- **LangSmith integration**: Trace routing, experiment management
-- **Cost consciousness**: Development efficiency with budget control
-
-## Future Enhancements & Roadmap
-
-### Immediate Opportunities
-
-- **Additional Financial Tools**: Options pricing, portfolio optimization
-- **Enhanced Evaluators**: Risk assessment, regulatory compliance
-- **Multi-Modal Capabilities**: Chart analysis, document processing
-- **Real-Time Data**: Streaming market data integration
-
-### Scalability Considerations
-
-- **Database Integration**: Persistent evaluation results storage
-- **API Rate Limiting**: Intelligent backoff and retry mechanisms
-- **Deployment Automation**: Docker containerization and CI/CD
-- **Monitoring Dashboards**: Real-time performance visualization
+- **LangChain** for the agent framework
+- **Spotify Web API** for music data
+- **OpenAI** for language model capabilities
+- **LangSmith** for observability and tracing
 
 ---
 
-## Contact & Contribution
-
-This project demonstrates production-ready LangChain implementation with enterprise-grade evaluation frameworks. For technical discussions or collaboration opportunities, please reach out through the appropriate channels.
-
-**Key Technologies**: LangChain, LangSmith, Pydantic, OpenAI/Gemini APIs, Yahoo Finance, Tavily Search
+Built with ❤️ for music lovers and AI enthusiasts

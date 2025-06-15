@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Music, ArrowUp, WifiOff, RefreshCw, ExternalLink, Play, Heart, Send } from "lucide-react"
 import { SongCard } from "@/components/song-card"
+import { Header } from "@/components/header"
 
 const FASTAPI_URL = "http://127.0.0.1:8000"
 
@@ -158,12 +159,12 @@ export default function SpotifyMusicChat() {
         ) : (
           <div className="space-y-4">
             {message.content && (
-              <div className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+              <div className="text-white whitespace-pre-wrap leading-relaxed">
                 {message.content}
               </div>
             )}
             {message.toolsUsed && message.toolsUsed.length > 0 && (
-              <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              <div className="text-xs text-white/70 bg-[#282828] px-2 py-1 rounded">
                 🔧 Tools used: {message.toolsUsed.join(", ")}
               </div>
             )}
@@ -181,75 +182,33 @@ export default function SpotifyMusicChat() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-              <Music className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-medium text-gray-900">Spotify AI Agent</span>
-          </div>
-
-          {/* Server Status */}
-          <div className="flex items-center space-x-3">
-            <div
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm font-medium ${serverStatus === "connected"
-                ? "bg-green-100 text-green-700"
-                : serverStatus === "disconnected"
-                  ? "bg-red-100 text-red-700"
-                  : "bg-yellow-100 text-yellow-700"
-                }`}
-            >
-              {serverStatus === "connected" ? (
-                <>
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Connected</span>
-                </>
-              ) : serverStatus === "disconnected" ? (
-                <>
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span>Offline</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                  <span>Checking</span>
-                </>
-              )}
-            </div>
-            <Button size="sm" variant="ghost" onClick={checkServerStatus} className="text-gray-500 hover:text-gray-700">
-              <RefreshCw className={`w-4 h-4 ${serverStatus === "checking" ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="flex flex-col h-screen bg-[#121212]">
+      <Header serverStatus={serverStatus} onRefreshStatus={checkServerStatus} />
 
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="max-w-4xl mx-auto">
           {messages.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Music className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 bg-[#1db954] rounded-full flex items-center justify-center mx-auto mb-6">
+                <Music className="w-8 h-8 text-black" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Spotify AI Agent</h1>
-              <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
+              <h1 className="text-3xl font-bold text-white mb-4">Welcome to Spotify AI Agent</h1>
+              <p className="text-white/70 text-lg mb-8 max-w-2xl mx-auto">
                 Ask me about music, get song recommendations, discover new artists, or find the perfect playlist for any mood.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                <div className="bg-white border border-gray-200 rounded-lg p-4 text-left">
-                  <p className="text-gray-700 text-sm">"Give me some upbeat pop songs"</p>
+                <div className="bg-[#1a1a1a] border border-[#282828] rounded-lg p-4 text-left hover:bg-[#242424] transition-colors cursor-pointer">
+                  <p className="text-white/80 text-sm">"Give me some upbeat pop songs"</p>
                 </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-4 text-left">
-                  <p className="text-gray-700 text-sm">"Find me relaxing jazz music"</p>
+                <div className="bg-[#1a1a1a] border border-[#282828] rounded-lg p-4 text-left hover:bg-[#242424] transition-colors cursor-pointer">
+                  <p className="text-white/80 text-sm">"Find me relaxing jazz music"</p>
                 </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-4 text-left">
-                  <p className="text-gray-700 text-sm">"What are Green Day's best songs?"</p>
+                <div className="bg-[#1a1a1a] border border-[#282828] rounded-lg p-4 text-left hover:bg-[#242424] transition-colors cursor-pointer">
+                  <p className="text-white/80 text-sm">"What are Green Day's best songs?"</p>
                 </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-4 text-left">
-                  <p className="text-gray-700 text-sm">"Songs for a workout playlist"</p>
+                <div className="bg-[#1a1a1a] border border-[#282828] rounded-lg p-4 text-left hover:bg-[#242424] transition-colors cursor-pointer">
+                  <p className="text-white/80 text-sm">"Songs for a workout playlist"</p>
                 </div>
               </div>
             </div>
@@ -263,8 +222,8 @@ export default function SpotifyMusicChat() {
                 >
                   <div
                     className={`max-w-[80%] p-4 rounded-lg ${message.role === "user"
-                      ? "bg-green-500 text-white ml-4"
-                      : "bg-white border border-gray-200 mr-4"
+                      ? "bg-[#1db954] text-black ml-4"
+                      : "bg-[#1a1a1a] border border-[#282828] mr-4"
                       }`}
                   >
                     {message.role === "user" ? (
@@ -272,19 +231,19 @@ export default function SpotifyMusicChat() {
                     ) : (
                       <div className="space-y-4">
                         {message.content && (
-                          <div className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+                          <div className="text-white whitespace-pre-wrap leading-relaxed">
                             {message.content}
                           </div>
                         )}
                         {message.songs && message.songs.length > 0 && (
-                          <div className="mt-6 bg-white rounded-lg border border-gray-200 overflow-hidden">
+                          <div className="mt-6 bg-[#181818] rounded-lg border border-[#282828] overflow-hidden">
                             {/* Spotify-style header */}
-                            <div className="flex items-center px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
+                            <div className="flex items-center px-4 py-3 text-xs font-medium text-white/90 uppercase tracking-wider bg-[#121212] border-b border-[#282828]">
                               <div className="w-8 mr-4">#</div>
                               <div className="w-10 mr-4"></div>
                               <div className="flex-1 mr-4">Title</div>
                               <div className="hidden md:block flex-1 mr-4">Album</div>
-                              <div className="w-12 text-right ml-4">⏱</div>
+                              <div className="w-12 text-right ml-4">Time</div>
                             </div>
 
                             {/* Song list */}
@@ -302,11 +261,11 @@ export default function SpotifyMusicChat() {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 mr-4">
+                  <div className="bg-[#1a1a1a] border border-[#282828] rounded-lg p-4 mr-4">
                     <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                      <div className="w-2 h-2 bg-[#1db954] rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-[#1db954] rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                      <div className="w-2 h-2 bg-[#1db954] rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                     </div>
                   </div>
                 </div>
@@ -318,23 +277,23 @@ export default function SpotifyMusicChat() {
       </div>
 
       {/* Input Area - Fixed at Bottom */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4 flex-shrink-0">
+      <div className="bg-[#181818] border-t border-[#282828] px-6 py-4 flex-shrink-0">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="relative">
             <Input
               value={input}
               onChange={handleInputChange}
               placeholder="Ask for songs, artists, or music recommendations..."
-              className="w-full h-14 px-6 pr-16 text-base bg-white border-2 border-gray-300 rounded-full focus:border-green-500 focus:ring-0 shadow-sm placeholder:text-gray-400"
+              className="w-full h-14 px-6 pr-16 text-base bg-[#242424] border-2 border-[#3e3e3e] rounded-full focus:border-[#1db954] focus:ring-0 shadow-sm placeholder:text-white/60 text-white hover:bg-[#2a2a2a] transition-colors"
               disabled={isLoading || serverStatus !== "connected"}
             />
             <Button
               type="submit"
               size="sm"
               disabled={!input.trim() || isLoading || serverStatus !== "connected"}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 p-0 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-full"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 p-0 bg-[#1db954] hover:bg-[#1ed760] disabled:bg-[#535353] disabled:text-white/40 rounded-full"
             >
-              <ArrowUp className="w-5 h-5 text-white" />
+              <ArrowUp className="w-5 h-5 text-black" />
             </Button>
           </form>
         </div>

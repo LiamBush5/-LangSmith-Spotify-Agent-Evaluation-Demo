@@ -25,15 +25,15 @@ interface SongCardProps {
 export function SongCard({ song, index }: SongCardProps) {
 
   return (
-    <div className="group flex items-center px-4 py-2 rounded-md hover:bg-gray-50 transition-colors duration-200">
+    <div className="group flex items-center px-4 py-2 rounded-md hover:bg-[#1a1a1a] transition-colors duration-200">
       {/* Track Number / Play Button */}
       <div className="w-8 flex items-center justify-center mr-4">
-        <span className="text-gray-500 text-sm group-hover:hidden">
+        <span className="text-white/60 text-sm group-hover:hidden">
           {index ? index : "#"}
         </span>
         <Button
           size="sm"
-          className="w-8 h-8 p-0 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-md hidden group-hover:flex items-center justify-center"
+          className="w-8 h-8 p-0 bg-[#1db954] hover:bg-[#1ed760] text-black rounded-full shadow-md hidden group-hover:flex items-center justify-center"
           onClick={() => window.open(song.spotify_url, "_blank")}
         >
           <Play className="w-3 h-3 ml-0.5" />
@@ -41,7 +41,7 @@ export function SongCard({ song, index }: SongCardProps) {
       </div>
 
       {/* Album Art */}
-      <div className="w-10 h-10 rounded mr-4 overflow-hidden bg-gray-200 flex-shrink-0">
+      <div className="w-10 h-10 rounded mr-4 overflow-hidden bg-[#282828] flex-shrink-0">
         {song.album_image_url ? (
           <img
             src={song.album_image_url}
@@ -55,18 +55,18 @@ export function SongCard({ song, index }: SongCardProps) {
             }}
           />
         ) : null}
-        <div className={`w-full h-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center ${song.album_image_url ? 'hidden' : 'flex'}`}>
-          <Music className="w-4 h-4 text-white" />
+        <div className={`w-full h-full bg-gradient-to-br from-[#1db954] to-[#1ed760] flex items-center justify-center ${song.album_image_url ? 'hidden' : 'flex'}`}>
+          <Music className="w-4 h-4 text-black" />
         </div>
       </div>
 
       {/* Track Info */}
       <div className="flex-1 min-w-0 mr-4">
         <div className="flex flex-col">
-          <span className="text-gray-900 font-medium text-sm truncate hover:underline cursor-pointer">
+          <span className="text-white font-medium text-sm truncate hover:underline cursor-pointer">
             {song.name}
           </span>
-          <span className="text-gray-500 text-xs truncate hover:underline cursor-pointer">
+          <span className="text-white/70 text-xs truncate hover:underline cursor-pointer">
             {song.artist}
           </span>
         </div>
@@ -74,7 +74,7 @@ export function SongCard({ song, index }: SongCardProps) {
 
       {/* Album Name */}
       <div className="hidden md:block flex-1 min-w-0 mr-4">
-        <span className="text-gray-500 text-sm truncate hover:underline cursor-pointer">
+        <span className="text-white/70 text-sm truncate hover:underline cursor-pointer">
           {song.album}
         </span>
       </div>
@@ -83,7 +83,7 @@ export function SongCard({ song, index }: SongCardProps) {
 
       {/* Duration */}
       <div className="w-12 text-right ml-4">
-        <span className="text-gray-500 text-sm">{song.duration}</span>
+        <span className="text-white/70 text-sm">{song.duration}</span>
       </div>
     </div>
   )

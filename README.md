@@ -1,253 +1,89 @@
-# 🎵 Spotify AI Music Agent
+# Spotify Music Concierge
 
-A sophisticated AI-powered music concierge that provides intelligent music recommendations and playlist curation through natural conversation. Built with LangChain agents, modern React frontend, and comprehensive Spotify integration.
+A production-ready AI music agent that provides personalized music recommendations and playlist generation using Spotify's API. Built with LangChain and OpenAI, featuring comprehensive evaluation metrics and a clean web interface.
 
-## 🎯 Project Goal
+## Overview
 
-Create an intelligent music assistant that understands natural language queries and provides personalized music recommendations with the brevity and style of Spotify's AI DJ - delivering quick, knowledgeable commentary about artists and songs without lengthy explanations.
+This system implements an AI-powered music concierge that acts as a DJ, providing brief, conversational music recommendations rather than detailed track lists. The agent can search for songs, artists, create playlists, and provide music recommendations based on user queries.
 
-## 🏗️ Architecture Overview
+## Key Features
 
-### Backend: Python LangChain Agent
-- **Agent Framework**: LangChain with OpenAI GPT-4o-mini
-- **Memory**: Conversation context and user preferences
-- **Tools**: 6 specialized Spotify integration tools
-- **API**: FastAPI server with structured responses
-- **Observability**: LangSmith tracing and evaluation
+- **AI Music Agent**: LangChain-powered agent with Spotify API integration
+- **Evaluation Framework**: 7 production-ready evaluators for agent performance
+- **Web Interface**: Next.js frontend for interactive music discovery
+- **LangSmith Integration**: Comprehensive tracing and evaluation pipeline
+- **RESTful API**: FastAPI backend with standardized endpoints
 
-### Frontend: Modern React Application
-- **Framework**: Next.js 15 with TypeScript
-- **Styling**: Tailwind CSS with Spotify-inspired design
-- **Components**: Clean, responsive song cards and chat interface
-- **Real-time**: Live chat with streaming responses
-- **Integration**: Direct Spotify URL linking for seamless playback
+## Architecture
 
-## 🛠️ Agent Tools
+- **Backend**: Python FastAPI server with LangChain agent
+- **Frontend**: Next.js React application
+- **AI Model**: OpenAI GPT-4 with custom prompting for DJ-style responses
+- **APIs**: Spotify Web API, Tavily search API
+- **Evaluation**: Custom evaluators for tool correctness, response style, and efficiency
 
-The AI agent uses 6 specialized tools to handle different music queries:
+## Installation
 
-### 1. `get_artist_top_songs`
-**Purpose**: Retrieve an artist's most popular tracks
-```python
-# Example: "Show me Taylor Swift's hits"
-get_artist_top_songs(artist_name="Taylor Swift", limit=10)
-```
-**Returns**: Top songs with popularity scores, album info, and Spotify URLs
+1. Clone the repository
+2. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Install frontend dependencies:
+   ```bash
+   cd spotify-agent-demo
+   npm install
+   ```
 
-### 2. `get_genre_songs`
-**Purpose**: Discover music by genre or mood
-```python
-# Example: "I want some chill indie rock"
-get_genre_songs(genre="indie rock", limit=10)
-```
-**Returns**: Genre-appropriate tracks with diversity scoring
+## Configuration
 
-### 3. `search_tracks`
-**Purpose**: General music search with flexible queries
-```python
-# Example: "Find songs like Blinding Lights"
-search_tracks(query="Blinding Lights The Weeknd", limit=10)
-```
-**Returns**: Relevant tracks matching search criteria
+1. Copy the environment template:
+   ```bash
+   cp .env.example .env
+   ```
+2. Add your API keys to `.env`:
+   - `OPENAI_API_KEY`: OpenAI API access
+   - `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`: Spotify Web API
+   - `TAVILY_API_KEY`: Web search functionality
+   - `LANGSMITH_API_KEY`: Evaluation and tracing
 
-### 4. `get_similar_songs`
-**Purpose**: Find music similar to specific artists
-```python
-# Example: "Artists similar to Billie Eilish"
-get_similar_songs(artist_name="Billie Eilish", limit=8)
-```
-**Returns**: Related artists and their popular tracks
+## Running the Application
 
-### 5. `create_smart_playlist`
-**Purpose**: Generate curated playlists with AI analysis
-```python
-# Example: "Create a workout playlist"
-create_smart_playlist(name="Workout Mix", description="High energy tracks", size=15)
-```
-**Returns**: Thoughtfully curated playlist with flow analysis
-
-### 6. `tavily_search_results_json`
-**Purpose**: Search for current music events and concerts
-```python
-# Example: "Who's performing in NYC this weekend?"
-tavily_search_results_json(query="concerts New York this weekend")
-```
-**Returns**: Real-time event information and concert listings
-
-## 🎨 React Frontend Features
-
-### Modern Spotify-Style UI
-- **Song Cards**: Compact horizontal layout with album art, track info, and play buttons
-- **Responsive Design**: Works seamlessly on desktop and mobile
-- **Clean Interface**: Minimal, music-focused design language
-- **Direct Integration**: Play buttons link directly to Spotify
-
-### Interactive Chat Experience
-- **Natural Conversation**: Chat with the AI about music preferences
-- **Real-time Responses**: Streaming responses with loading states
-- **Song Display**: Beautiful cards showing recommended tracks
-- **Spotify Integration**: One-click access to full tracks
-
-### Key Components
-```typescript
-// Song card component with Spotify styling
-<SongCard
-  track={song}
-  index={index}
-  onPlay={() => window.open(song.spotify_url)}
-/>
-
-// Chat interface with streaming responses
-<ChatInterface
-  messages={messages}
-  onSendMessage={handleSendMessage}
-  isLoading={isLoading}
-/>
-```
-
-## 🚀 How It Works
-
-### 1. User Interaction
-User sends natural language music query through React chat interface:
-- "Find me some upbeat pop songs like Dua Lipa"
-- "Create a chill playlist for studying"
-- "Who's performing in Philadelphia soon?"
-
-### 2. Agent Processing
-LangChain agent analyzes the query and:
-- Determines appropriate tool(s) to use
-- Executes Spotify API calls through specialized tools
-- Processes and formats the response data
-- Maintains conversation context for follow-up queries
-
-### 3. Response Generation
-Agent provides brief, DJ-style responses with:
-- Curated song recommendations
-- Quick commentary about artists/tracks
-- Structured data for frontend display
-- Spotify URLs for immediate playback
-
-### 4. Frontend Display
-React frontend renders:
-- Clean song cards with album art and metadata
-- Play buttons linking directly to Spotify
-- Conversational chat history
-- Responsive, mobile-friendly interface
-
-## 📊 Agent Capabilities
-
-### Music Discovery
-- **Artist Exploration**: Top songs, similar artists, discography insights
-- **Genre Discovery**: Curated selections across all music genres
-- **Mood-Based Recommendations**: Music matching specific vibes or activities
-- **Playlist Generation**: AI-curated playlists with flow analysis
-
-### Conversational Intelligence
-- **Context Awareness**: Remembers previous queries and preferences
-- **Natural Language**: Understands complex, multi-part music requests
-- **Brief Responses**: Spotify DJ-style commentary (1-2 sentences max)
-- **Error Handling**: Graceful handling of unclear or invalid queries
-
-### Real-Time Information
-- **Concert Search**: Current events and tour information
-- **Music News**: Latest releases and industry updates
-- **Location-Based**: Local concert and event recommendations
-
-## 🔧 Technical Stack
-
-### Backend
-- **Python 3.11+** with FastAPI
-- **LangChain** for agent orchestration
-- **OpenAI GPT-4o-mini** for natural language processing
-- **Spotify Web API** for music data
-- **LangSmith** for observability and evaluation
-- **Pydantic v2** for data validation
-
-### Frontend
-- **Next.js 15** with TypeScript
-- **React 18** with modern hooks
-- **Tailwind CSS** for styling
-- **Lucide React** for icons
-- **Responsive design** principles
-
-### Development Tools
-- **LangSmith Evaluation** for agent performance testing
-- **OpenEvals** for standardized evaluation metrics
-- **Git** version control with comprehensive commit history
-
-## 🎵 Example Interactions
-
-### Basic Artist Search
-```
-User: "Show me The Weeknd's biggest hits"
-Agent: "Check out The Weeknd's top hits like 'Blinding Lights,' 'Starboy,' and 'Die For You.' These tracks showcase his signature sound and massive appeal."
-```
-
-### Genre Discovery
-```
-User: "I want to discover some indie rock bands"
-Agent: "Dive into the indie rock scene with fresh sounds from The Backseat Lovers, Hozier, and Arctic Monkeys to get your indie fix!"
-```
-
-### Event Search
-```
-User: "Who's performing in New York this weekend?"
-Agent: "This weekend in NYC, there are over 66 concerts happening, including festivals like Anti Social Camp. Check Ticketmaster for tickets!"
-```
-
-## 🎯 Key Features
-
-### For Music Lovers
-- **Personalized Recommendations** based on conversation context
-- **Instant Spotify Access** with direct play button integration
-- **Diverse Discovery** across genres, moods, and eras
-- **Event Information** for live music experiences
-
-### For Developers
-- **Modern Architecture** with clean separation of concerns
-- **Comprehensive Evaluation** with LangSmith integration
-- **Scalable Design** supporting additional music services
-- **Professional Codebase** with TypeScript and proper error handling
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ and npm
-- Python 3.11+
-- OpenAI API key
-- LangSmith API key (optional, for tracing)
-
-### Quick Start
+### Backend API Server
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd spotify-music-agent
-
-# Backend setup
-pip install -r requirements.txt
-cp .env.example .env  # Add your API keys
 python run_api.py
+```
+The API will be available at `http://127.0.0.1:8000` with documentation at `/docs`.
 
-# Frontend setup (new terminal)
+### Frontend Development Server
+```bash
 cd spotify-agent-demo
-npm install
 npm run dev
 ```
+The web interface will be available at `http://localhost:3000`.
 
-Visit `http://localhost:3000` to start chatting with your AI music concierge!
+## API Endpoints
 
-## 📈 Evaluation & Testing
+- `POST /chat`: Submit music queries and receive AI responses
+- `POST /evaluate`: Run evaluation metrics on agent responses
+- `GET /health`: Health check endpoint
 
-The agent includes comprehensive evaluation using LangSmith and OpenEvals:
-- **10 realistic test scenarios** covering different query types
-- **5 evaluation metrics** including response quality and tool efficiency
-- **Performance tracking** across conversation complexity
-- **Continuous improvement** through evaluation insights
+## Evaluation
 
-## 🎵 Built for Music Discovery
+The system includes 7 evaluation metrics:
+- Tool Correctness: Validates proper API usage
+- Tool Efficiency: Ensures optimal performance (≤3 API calls)
+- DJ Style: Enforces conversational, brief responses
+- Playlist Size: Validates playlist length accuracy
+- Error Handling: Tests graceful failure handling
+- Music Relevance: Scores response relevance
+- Helpfulness: Measures overall response quality
 
-This AI music agent represents the future of music discovery - combining the intelligence of modern language models with the vast catalog of Spotify, delivered through a clean, intuitive interface that makes finding your next favorite song as easy as having a conversation.
+Run evaluations with:
+```bash
+python evaluations/run.py
+```
 
----
+## License
 
-**Ready to discover your next favorite song?** Start chatting with the AI music concierge today!
+MIT License

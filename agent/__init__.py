@@ -1,5 +1,5 @@
 """
-Spotify Music Concierge Package
+Spotify Music Agent Package
 Clean public API for the music recommendation agent following financial agent patterns
 """
 

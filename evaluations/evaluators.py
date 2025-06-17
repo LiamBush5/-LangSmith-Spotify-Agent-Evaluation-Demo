@@ -1,12 +1,18 @@
 """
-Production-Ready Evaluators for Spotify Music Agent
-==================================================
+#test_difficulty:
+- easy
+- medium
+- hard
 
-Based on LangSmith best practices, this module provides:
-1. Trajectory evaluation for tool correctness
-2. Deterministic rule-based evaluators
-3. LLM-as-judge for semantic evaluation
-4. Custom domain-specific evaluators
+#test_type:
+- basic_search
+- genre_discovery
+- mood_based
+- playlist_creation
+- complex_query
+- event_search
+- edge_case
+- efficiency_test
 """
 
 from typing import Dict, Any, List
@@ -354,7 +360,7 @@ if __name__ == "__main__":
         helpfulness_evaluator
     ]
 
-    print("🔍 Testing Evaluators:")
+    print("Testing Evaluators:")
     print("=" * 30)
 
     for evaluator in evaluators:

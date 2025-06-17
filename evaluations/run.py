@@ -1,11 +1,3 @@
-"""
-Spotify Music Agent - LangSmith Evaluation
-=========================================
-
-Production evaluation script using LangSmith SDK with comprehensive dataset
-and production-ready evaluators.
-"""
-
 import os
 import sys
 from datetime import datetime
@@ -13,11 +5,11 @@ from typing import Dict, Any
 from langsmith import Client
 from langsmith import wrappers
 
-# Add parent directory to path so we can import concierge module
+# Add parent directory to path so we can import agent module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import our Spotify agent, dataset, and evaluators
-from concierge.music_agent import run_spotify_agent_with_project_routing
+from agent.music_agent import run_spotify_agent_with_project_routing
 from dataset import get_evaluation_dataset, get_dataset_stats
 from evaluators import get_all_evaluators
 

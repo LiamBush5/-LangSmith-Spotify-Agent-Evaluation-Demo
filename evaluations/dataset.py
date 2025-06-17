@@ -1,9 +1,18 @@
 """
-Spotify Agent Evaluation Dataset
-===============================
+#test_difficulty:
+- easy
+- medium
+- hard
 
-Comprehensive test cases organized by category, difficulty, and expected behavior.
-Designed for thorough evaluation of music agent capabilities.
+#test_type:
+- basic_search
+- genre_discovery
+- mood_based
+- playlist_creation
+- complex_query
+- event_search
+- edge_case
+- efficiency_test
 """
 
 from typing import List, Dict, Any
@@ -658,21 +667,21 @@ if __name__ == "__main__":
     dataset = get_evaluation_dataset()
     stats = get_dataset_stats(dataset)
 
-    print("🎵 Spotify Agent Evaluation Dataset")
+    print("Spotify Agent Evaluation Dataset")
     print("=" * 40)
     print(f"Total test cases: {stats['total_cases']}")
     print()
 
-    print("📊 By Category:")
+    print("By Category:")
     for cat, count in stats['categories'].items():
         print(f"  {cat}: {count}")
     print()
 
-    print("📈 By Difficulty:")
+    print("By Difficulty:")
     for diff, count in stats['difficulties'].items():
         print(f"  {diff}: {count}")
     print()
 
-    print("🔍 Query Types:")
+    print("Query Types:")
     for qtype, count in stats['query_types'].items():
         print(f"  {qtype}: {count}")

@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     console.error("Error calling FastAPI server:", error)
 
     // Detailed fallback response with connection info
-    const fallbackMessage = `🎵 Unable to connect to your Music Concierge Agent at http://127.0.0.1:8000
+    const fallbackMessage = `🎵 Unable to connect to your Music Agent at http://127.0.0.1:8000
 
 Please make sure:
 1. Your FastAPI server is running

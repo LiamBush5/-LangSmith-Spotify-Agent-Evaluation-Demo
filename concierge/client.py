@@ -1,8 +1,3 @@
-"""
-Working Spotify Song Getter - Avoids deprecated endpoints
-Uses alternative methods for recommendations since the official endpoint is deprecated
-"""
-
 import requests
 import base64
 from typing import List, Dict, Any, Optional

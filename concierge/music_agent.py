@@ -1,9 +1,3 @@
-"""
-Spotify Music Concierge Agent with LangSmith Tracing
-
-Advanced music agent using ReAct pattern with comprehensive Spotify tool access.
-All agent, tool, and LLM calls are captured in LangSmith traces for observability.
-"""
 import uuid
 from typing import Dict, Any, Optional
 from langchain.agents import AgentExecutor, create_react_agent
@@ -63,7 +57,7 @@ EFFICIENT TOOL USAGE:
 - Artist discovery: ONLY use get_artist_top_songs OR get_similar_songs
 - Genre exploration: ONLY use get_genre_songs
 - Playlist creation: Use create_smart_playlist with data from 1-2 other tools MAX
-- Current info: Use tavily_search_results_json THEN 1 music tool
+- Current info: Use tavily_search THEN 1 music tool
 
 RESPONSE STYLE (CRITICAL):
 - Give ONLY 1-2 sentences of brief DJ commentary
@@ -135,6 +129,15 @@ Thought:{agent_scratchpad}"""
         if thread_id is None:
             thread_id = str(uuid.uuid4())
 
+        # Get current trace ID
+        trace_id = None
+        try:
+            from langsmith.run_helpers import get_current_run_tree
+            current_run = get_current_run_tree()
+            trace_id = str(current_run.trace_id) if current_run else None
+        except Exception as e:
+            print(f"Could not get trace_id: {e}")
+
         try:
             # Execute the agent
             result = self.agent_executor.invoke(
@@ -189,7 +192,8 @@ Thought:{agent_scratchpad}"""
                 "songs_found": len(songs_found),
                 "songs": songs_found,  # Add the actual songs array
                 "query": query,
-                "thread_id": thread_id
+                "thread_id": thread_id,
+                "trace_id": trace_id  # Add trace_id to response
             }
 
             print(f"\nMusic Analysis Complete!")
@@ -213,10 +217,11 @@ Thought:{agent_scratchpad}"""
                 "songs": [],  # Add empty songs array
                 "query": query,
                 "thread_id": thread_id,
+                "trace_id": trace_id,  # Add trace_id to error response too
                 "error": True
             }
 
-            print(f"❌ Music analysis failed: {str(e)}")
+            print(f"Music analysis failed: {str(e)}")
             return error_result
 
 
@@ -264,7 +269,7 @@ def run_spotify_agent(inputs: Dict[str, str]) -> Dict[str, Any]:
         "timestamp": str(pd.Timestamp.now())
     })
 
-    print("\n✅ Music Evaluation Complete")
+    print("\nMusic Evaluation Complete")
     print(f"Response Length: {len(result.get('response', ''))}")
     print(f"Tools Used: {result.get('total_tool_calls', 0)}")
     print(f"Songs Discovered: {result.get('songs_found', 0)}")

@@ -1,14 +1,9 @@
-#!/usr/bin/env python3
-"""
-Simple API Server for Spotify Music Concierge Agent
-Clean FastAPI server using the refactored SpotifyMusicAgent
-"""
-
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
+from langsmith import Client
 
 from .music_agent import SpotifyMusicAgent
 
@@ -28,14 +23,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global agent instance
+# Global agent instance and LangSmith client
 agent = None
+langsmith_client = Client()
 
 # Request/Response models
 class MusicQueryRequest(BaseModel):
     """Music query request model"""
     query: str
     thread_id: Optional[str] = None
+
+class FeedbackRequest(BaseModel):
+    """User feedback request model"""
+    trace_id: str
+    feedback: int
+    comment: Optional[str] = None
 
 class MusicQueryResponse(BaseModel):
     """Music query response model"""
@@ -45,9 +47,10 @@ class MusicQueryResponse(BaseModel):
     total_tool_calls: int = 0
     unique_tools_used: list = []
     songs_found: int = 0
-    songs: list = []  # Add songs array
+    songs: list = []
     query: str
     thread_id: Optional[str] = None
+    trace_id: Optional[str] = None
     success: bool = True
     error: Optional[str] = None
 
@@ -106,9 +109,10 @@ async def chat_music(request: MusicQueryRequest):
             total_tool_calls=result["total_tool_calls"],
             unique_tools_used=result["unique_tools_used"],
             songs_found=result["songs_found"],
-            songs=result.get("songs", []),  # Include songs array
+            songs=result.get("songs", []),
             query=result["query"],
             thread_id=result["thread_id"],
+            trace_id=result.get("trace_id"),
             success=not result.get("error", False),
             error=result.get("error")
         )
@@ -135,6 +139,25 @@ async def evaluate_agent(inputs: Dict[str, str]):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/feedback")
+async def submit_feedback(request: FeedbackRequest):
+    """Submit user feedback for a response"""
+    try:
+        # Log feedback to LangSmith
+        langsmith_client.create_feedback(
+            key="user_feedback",
+            score=request.feedback,
+            trace_id=request.trace_id,
+            comment=request.comment or ("👍 Thumbs up" if request.feedback == 1 else "👎 Thumbs down")
+        )
+
+        return {
+            "success": True,
+            "message": "Feedback submitted successfully"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to submit feedback: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

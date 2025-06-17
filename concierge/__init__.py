@@ -17,5 +17,3 @@ __all__ = [
     "config",
 ]
 
-# Note: For evaluations, use run_spotify_agent_with_project_routing
-# This ensures proper LangSmith project routing

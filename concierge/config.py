@@ -1,8 +1,3 @@
-"""
-Configuration for Spotify Music Concierge Agent
-
-Clean configuration following the financial agent pattern.
-"""
 import os
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
@@ -52,4 +47,4 @@ def validate_config():
 
 # Validate on import
 validate_config()
-print(f"✅ Configuration loaded for project: {LANGSMITH_PROJECT}")
+print(f"Configuration loaded for project: {LANGSMITH_PROJECT}")

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Music, ArrowUp, WifiOff, RefreshCw, ExternalLink, Play, Heart, Send } from "lucide-react"
 import { SongCard } from "@/components/song-card"
 import { Header } from "@/components/header"
+import { FeedbackComponent } from "@/components/feedback"
 
 const FASTAPI_URL = "http://127.0.0.1:8000"
 
@@ -29,6 +30,7 @@ interface ChatMessage {
   songs?: Song[]
   toolsUsed?: string[]
   timestamp?: string
+  traceId?: string
 }
 
 interface ApiResponse {
@@ -43,6 +45,7 @@ interface ApiResponse {
   unique_tools_used: string[]
   songs_found: number
   query: string
+  trace_id?: string
   success: boolean
   error?: string
 }
@@ -127,7 +130,8 @@ export default function SpotifyMusicChat() {
         content: data.response,
         songs: songs,
         toolsUsed: data.unique_tools_used,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        traceId: data.trace_id
       }
 
       setMessages(prev => [...prev, assistantMessage])
@@ -260,6 +264,7 @@ export default function SpotifyMusicChat() {
                             {message.content}
                           </div>
                         )}
+
                         {message.songs && message.songs.length > 0 && (
                           <div className="mt-6 bg-gradient-to-br from-[#181818] to-[#1a1a1a] rounded-xl border border-[#282828] overflow-hidden shadow-xl">
                             {/* Enhanced Spotify-style header */}
@@ -279,6 +284,14 @@ export default function SpotifyMusicChat() {
                             </div>
                           </div>
                         )}
+
+                        {/* Add feedback component for assistant messages - AFTER songs */}
+                        <FeedbackComponent
+                          traceId={message.traceId}
+                          onFeedbackSubmit={(feedback) => {
+                            console.log(`User gave feedback: ${feedback === 1 ? 'thumbs up' : 'thumbs down'}`)
+                          }}
+                        />
                       </div>
                     )}
                   </div>

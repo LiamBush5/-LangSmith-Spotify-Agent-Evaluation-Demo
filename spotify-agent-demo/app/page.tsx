@@ -279,7 +279,7 @@ export default function SpotifyMusicChat() {
                             {/* Song list */}
                             <div>
                               {message.songs.map((song: Song, songIndex: number) => (
-                                <SongCard key={`song-${song.id || songIndex}-${index}`} song={song} index={songIndex + 1} />
+                                <SongCard key={`message-${index}-song-${song.id || songIndex}-${songIndex}`} song={song} index={songIndex + 1} />
                               ))}
                             </div>
                           </div>

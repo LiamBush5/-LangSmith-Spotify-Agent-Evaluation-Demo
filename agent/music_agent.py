@@ -93,7 +93,7 @@ Thought: I now know the final answer
 Final Answer: the final answer to the original input question
 
 Question: {input}
-Thought:{agent_scratchpad}"""
+Thought: {agent_scratchpad}"""
 
         prompt = PromptTemplate(
             template=prompt_template,

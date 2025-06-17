@@ -1,23 +1,20 @@
-"""
-#test_difficulty:
-- easy
-- medium
-- hard
+'''
+RULE-BASED EVALUATORS:
+Tool Correctness - Ensures your agent uses exactly the right Spotify API calls
+Tool Efficiency - Hard limit of ≤3 tool calls to keep responses fast
+Playlist Size - Validates playlist requests match the requested number of songs (±2 songs)
 
-#test_type:
-- basic_search
-- genre_discovery
-- mood_based
-- playlist_creation
-- complex_query
-- event_search
-- edge_case
-- efficiency_test
-"""
+LLM-BASED EVALUATORS:
+DJ Style - Enforces your preferred brief, conversational tone (≤2 sentences, no track lists)
+Error Handling - Catches crashes and ensures graceful error recovery
+Music Relevance - Scores how well responses address music queries
+Helpfulness - Measures overall response quality and usefulness
+'''
 
 from typing import Dict, Any, List
 import re
 import json
+from langsmith.evaluation import LangChainStringEvaluator
 
 # =====================================
 # 1. TOOL CORRECTNESS (Trajectory-based)
@@ -85,51 +82,7 @@ def tool_efficiency_evaluator(run, example) -> Dict[str, Any]:
     }
 
 # =====================================
-# 3. DJ STYLE (Regex-based, Deterministic)
-# =====================================
-
-def dj_style_evaluator(run, example) -> Dict[str, Any]:
-    """
-    Deterministic DJ style evaluation:
-    - Max 2 sentences
-    - No enumerated track lists (e.g., "1. Song - Artist")
-    - Brief and conversational
-    """
-    response = run.outputs.get("response", "")
-
-    # Count sentences using regex
-    sentence_regex = re.compile(r'[.!?]+\s*')
-    sentences = [s.strip() for s in sentence_regex.split(response) if s.strip()]
-    sentence_count = len(sentences)
-
-    # Check for track list format (numbered lists)
-    has_tracklist = bool(re.search(r'\d+\.\s+[^\n]*(?:–|-|by)\s*[^\n]*', response, re.MULTILINE))
-
-    # Check length (brief responses preferred)
-    is_brief = len(response) <= 300  # Reasonable character limit
-
-    # Scoring
-    sentence_ok = sentence_count <= 2
-    no_tracklist = not has_tracklist
-
-    # Calculate final score
-    if sentence_ok and no_tracklist and is_brief:
-        score = 1.0
-    elif sentence_ok and no_tracklist:
-        score = 0.8  # Good but a bit long
-    elif sentence_ok or no_tracklist:
-        score = 0.5  # Partial compliance
-    else:
-        score = 0.0  # Poor style
-
-    return {
-        "key": "dj_style",
-        "score": score,
-        "comment": f"{sentence_count} sentences, {'no ' if no_tracklist else ''}tracklist, {len(response)} chars"
-    }
-
-# =====================================
-# 4. PLAYLIST SIZE VALIDATION
+# 3. PLAYLIST SIZE VALIDATION
 # =====================================
 
 def playlist_size_evaluator(run, example) -> Dict[str, Any]:
@@ -184,127 +137,107 @@ def playlist_size_evaluator(run, example) -> Dict[str, Any]:
     }
 
 # =====================================
-# 5. ERROR HANDLING ROBUSTNESS
+# 4. LANGCHAIN EVALUATORS SETUP
 # =====================================
 
-def error_handling_evaluator(run, example) -> Dict[str, Any]:
-    """
-    Check for graceful error handling (no uncaught exceptions)
-    """
-    response = run.outputs.get("response", "")
-    error_info = run.outputs.get("error", None)
-
-    # Check for signs of crashes or poor error handling
-    crash_indicators = [
-        "Traceback",
-        "Exception:",
-        "Error:",
-        "500 Internal Server Error",
-        "undefined",
-        "null"
-    ]
-
-    has_crash = any(indicator in response for indicator in crash_indicators)
-    has_empty_response = len(response.strip()) == 0
-
-    # Check for good error handling patterns
-    good_error_patterns = [
-        "sorry",
-        "couldn't find",
-        "not available",
-        "try again",
-        "alternative",
-        "suggestion"
-    ]
-
-    has_good_error_handling = any(pattern in response.lower() for pattern in good_error_patterns)
-
-    if has_crash or has_empty_response:
-        score = 0.0
-        comment = "System error or crash detected"
-    elif error_info and has_good_error_handling:
-        score = 0.8  # Good error recovery
-        comment = "Graceful error handling"
-    elif error_info:
-        score = 0.4  # Error occurred but handled
-        comment = "Error handled but could be better"
-    else:
-        score = 1.0  # No errors
-        comment = "No errors detected"
-
-    return {
-        "key": "error_handling",
-        "score": score,
-        "comment": comment
-    }
-
-# =====================================
-# 6. MUSIC RELEVANCE (LLM-as-Judge)
-# =====================================
-
-def music_relevance_evaluator(run, example) -> Dict[str, Any]:
-    """
-    Simple music relevance evaluator based on response content
-    """
-    response = run.outputs.get("response", "")
-    inputs = getattr(example, "inputs", {})
-    query = inputs.get("query", "") if isinstance(inputs, dict) else ""
-
-    # Simple heuristic scoring based on response content
-    score = 0.8  # Default good score
-    comment = "Music response provided"
-
-    # Check if response is empty or error
-    if not response or len(response.strip()) == 0:
-        score = 0.0
-        comment = "Empty response"
-    elif any(error in response.lower() for error in ["error", "sorry", "couldn't find"]):
-        score = 0.6
-        comment = "Response with limitations"
-    elif len(response) > 50:  # Substantial response
-        score = 0.9
-        comment = "Detailed music response"
-
-    return {
-        "key": "music_relevance",
-        "score": score,
-        "comment": comment
-    }
-
-# =====================================
-# 7. RESPONSE HELPFULNESS (LLM-as-Judge)
-# =====================================
-
-def helpfulness_evaluator(run, example) -> Dict[str, Any]:
-    """
-    Simple helpfulness evaluator based on response quality
-    """
+# Prepare data function for LangChain evaluators
+def prepare_data_for_langchain(run, example):
+    """Extract the 'response' field and song data for LangChain evaluation"""
     response = run.outputs.get("response", "")
     songs = run.outputs.get("songs", [])
 
-    # Simple heuristic scoring
-    score = 0.7  # Default decent score
-    comment = "Helpful response"
-
-    # Check response quality indicators
-    if not response:
-        score = 0.0
-        comment = "No response provided"
-    elif songs and len(songs) > 0:
-        score = 0.9
-        comment = f"Provided {len(songs)} music recommendations"
-    elif len(response) > 30:
-        score = 0.8
-        comment = "Detailed helpful response"
-    elif any(helpful in response.lower() for helpful in ["here", "try", "check out", "recommend"]):
-        score = 0.8
-        comment = "Helpful guidance provided"
+    # Create enriched prediction with both response and song data
+    if songs:
+        song_list = "\n".join([f"- {song.get('name', 'Unknown')} by {song.get('artist', 'Unknown')}"
+                              for song in songs[:10]])  # Limit to first 10 for readability
+        enriched_prediction = f"{response}\n\nSongs provided:\n{song_list}"
+    else:
+        enriched_prediction = response
 
     return {
-        "key": "helpfulness",
-        "score": score,
-        "comment": comment
+        "prediction": enriched_prediction,
+        "input": example.inputs.get("query", "") if hasattr(example, "inputs") and isinstance(example.inputs, dict) else ""
     }
+
+# Prepare data function for DJ style evaluation (response only)
+def prepare_dj_data(run, example):
+    """Extract only the response field for DJ style evaluation"""
+    response = run.outputs.get("response", "")
+    return {
+        "prediction": response,  # Only the response, no song listings
+        "input": example.inputs.get("query", "") if hasattr(example, "inputs") and isinstance(example.inputs, dict) else ""
+    }
+
+# =====================================
+# 5. ERROR HANDLING ROBUSTNESS (Now LLM-based)
+# =====================================
+
+# Error handling evaluator using LangChain LLM scoring (0-10 scale, normalized to 0-1)
+error_handling_evaluator = LangChainStringEvaluator(
+    "score_string",
+    config={
+        "criteria": {
+            "error_handling": "Rate the error handling quality (1-10): How well does this response handle errors gracefully? Good responses should provide user-friendly messages, helpful suggestions, and avoid technical jargon or crashes. Perfect score (10) = graceful, helpful error recovery with clear guidance. Low scores for crashes, technical errors, empty responses, or unhelpful messages."
+        },
+        "normalize_by": 10
+    },
+    prepare_data=prepare_data_for_langchain
+)
+
+# =====================================
+# 6. LANGCHAIN EVALUATORS
+# =====================================
+
+# DJ Style evaluator using LangChain LLM scoring (0-10 scale, normalized to 0-1)
+dj_style_evaluator = LangChainStringEvaluator(
+    "score_string",
+    config={
+        "criteria": {
+            "dj_style": """Rate this response on DJ style (1-10): Should be conversational and brief (max 2 sentences), avoid enumerated track lists (like '1. Song - Artist'), and maintain a casual, DJ-like tone.
+
+SCORING GUIDE:
+10: Perfect DJ style - exactly 1-2 sentences, conversational, no lists
+8-9: Great DJ style - brief and conversational with minor issues
+6-7: Good effort - mostly brief, some DJ language, maybe slightly formal
+4-5: Average - conversational but too long OR brief but too formal
+2-3: Poor - long responses OR formal language OR some track listing
+1: Minimal effort - has some DJ elements but significant issues
+0: Complete failure - very long, very formal, OR numbered track lists
+
+The response you're evaluating is conversational, mentions the playlist name and vibe, stays under 2 sentences, and avoids numbered lists. Even if it mentions a couple song titles, it's still in DJ territory."""
+        },
+        "normalize_by": 10
+    },
+    prepare_data=prepare_dj_data  # Use the new DJ-specific function
+)
+
+# Create LangChain evaluators for music relevance and helpfulness
+music_relevance_evaluator = LangChainStringEvaluator(
+    "criteria",
+    config={
+        "criteria": {
+            "relevance": """Does this response appropriately address the music query with relevant songs, artists, or music information?
+
+Focus ONLY on music relevance - whether the content matches the requested genre, mood, artist, or musical style. Do NOT penalize for the number of songs provided, as quantity is evaluated separately.
+
+Examples of RELEVANT responses:
+- Road trip playlist → upbeat, energetic songs suitable for driving
+- Sad songs → melancholic, emotional tracks
+- Taylor Swift songs → actual Taylor Swift tracks or similar artists
+- 90s rock → songs from that era and genre
+
+Score Y (relevant) if the musical content matches the request, regardless of quantity.
+Score N (not relevant) only if the songs/artists don't match the musical criteria."""
+        }
+    },
+    prepare_data=prepare_data_for_langchain
+)
+
+helpfulness_evaluator = LangChainStringEvaluator(
+    "criteria",
+    config={"criteria": "helpfulness"},
+    prepare_data=prepare_data_for_langchain
+)
 
 # =====================================
 # EVALUATOR COLLECTION
@@ -349,20 +282,19 @@ if __name__ == "__main__":
         metadata={'max_tool_calls': 2}
     )
 
-    # Test each evaluator
+    # Test each evaluator (only the custom ones for local testing)
     evaluators = [
         tool_correctness_evaluator,
         tool_efficiency_evaluator,
-        dj_style_evaluator,
         playlist_size_evaluator,
-        error_handling_evaluator,
-        music_relevance_evaluator,
-        helpfulness_evaluator
+        # Note: LangChain evaluators require LangSmith setup to test
     ]
 
-    print("Testing Evaluators:")
+    print("Testing Custom Evaluators:")
     print("=" * 30)
 
     for evaluator in evaluators:
         result = evaluator(test_run, test_example)
         print(f"{result['key']}: {result['score']} - {result['comment']}")
+
+    print("\nLangChain evaluators (dj_style, error_handling, music_relevance, helpfulness) require LangSmith setup to test properly.")

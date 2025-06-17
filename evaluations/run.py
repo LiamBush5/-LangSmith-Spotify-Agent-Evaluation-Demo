@@ -17,7 +17,7 @@ from evaluators import get_all_evaluators
 client = Client()
 
 # Configuration
-DATASET_NAME = "spotify-agent-evaluation"
+DEFAULT_DATASET_NAME = "Golden-Spotify-Agent-Dataset"
 EXPERIMENT_PREFIX = "spotify-agent-experiment"
 
 class SpotifyAgentEvaluation:
@@ -26,24 +26,90 @@ class SpotifyAgentEvaluation:
     def __init__(self):
         self.client = client
         self.dataset_id = None
+        self.dataset_name = None
 
-    def create_dataset(self) -> str:
+    def _prompt_dataset_choice(self) -> str:
+        """Prompt user to choose from available datasets"""
+        print("\nChoose Dataset:")
+
+        try:
+            # Get all available datasets
+            datasets = list(self.client.list_datasets())
+
+            if not datasets:
+                print("No datasets found. Creating default dataset...")
+                return DEFAULT_DATASET_NAME
+
+            # Filter for potentially relevant datasets (optional)
+            relevant_datasets = datasets  # Show all datasets
+
+            print("0. Create new dataset")
+            for i, dataset in enumerate(relevant_datasets[:10], 1):  # Limit to 10 for readability
+                created_date = dataset.created_at.strftime("%Y-%m-%d") if dataset.created_at else "Unknown"
+                example_count = "Unknown"
+                try:
+                    examples = list(self.client.list_examples(dataset_id=dataset.id, limit=1))
+                    total_examples = len(list(self.client.list_examples(dataset_id=dataset.id)))
+                    example_count = str(total_examples)
+                except:
+                    pass
+
+                print(f"{i}. {dataset.name} (ID: {str(dataset.id)[:8]}..., Examples: {example_count}, Created: {created_date})")
+
+            while True:
+                choice = input(f"\nEnter your choice (0-{len(relevant_datasets)}): ").strip()
+
+                if choice == "0":
+                    custom_name = input("Enter new dataset name (or press Enter for default): ").strip()
+                    selected_name = custom_name if custom_name else DEFAULT_DATASET_NAME
+                    print(f"Selected: Create new dataset '{selected_name}'")
+                    return selected_name
+
+                try:
+                    choice_idx = int(choice) - 1
+                    if 0 <= choice_idx < len(relevant_datasets):
+                        selected_dataset = relevant_datasets[choice_idx]
+                        print(f"Selected: {selected_dataset.name}")
+                        self.dataset_id = selected_dataset.id
+                        return selected_dataset.name
+                except ValueError:
+                    pass
+
+                print("Invalid choice, please try again.")
+
+        except Exception as e:
+            print(f"Error retrieving datasets: {e}")
+            print(f"Defaulting to: {DEFAULT_DATASET_NAME}")
+            return DEFAULT_DATASET_NAME
+
+    def create_dataset(self, dataset_name: str = None) -> str:
         """Create or update evaluation dataset"""
+        if not dataset_name:
+            dataset_name = DEFAULT_DATASET_NAME
+
+        self.dataset_name = dataset_name
+
         print("Setting up Evaluation Dataset")
         print("=" * 40)
+
+        # If dataset_id was already set from selection, use existing dataset
+        if self.dataset_id:
+            print(f"Using selected dataset: {self.dataset_id}")
+            return self.dataset_id
 
         # Load comprehensive test cases
         test_cases = get_evaluation_dataset()
         stats = get_dataset_stats(test_cases)
 
-        print(f"Dataset: {stats['total_cases']} test cases")
+        print(f"Dataset: {dataset_name}")
+        print(f"Test cases: {stats['total_cases']}")
         print(f"Categories: {len(stats['categories'])}")
         print(f"Difficulties: {', '.join(stats['difficulties'].keys())}")
         print()
 
         try:
             # Create or get existing dataset
-            existing_datasets = list(self.client.list_datasets(dataset_name=DATASET_NAME))
+            existing_datasets = list(self.client.list_datasets(dataset_name=dataset_name))
             if existing_datasets:
                 dataset = existing_datasets[0]
                 print(f"Using existing dataset: {dataset.id}")
@@ -56,8 +122,8 @@ class SpotifyAgentEvaluation:
                     return dataset.id
             else:
                 dataset = self.client.create_dataset(
-                    dataset_name=DATASET_NAME,
-                    description="Production evaluation dataset for Spotify music agent"
+                    dataset_name=dataset_name,
+                    description=f"Evaluation dataset for Spotify music agent - {dataset_name}"
                 )
                 print(f"Created new dataset: {dataset.id}")
 
@@ -130,7 +196,7 @@ class SpotifyAgentEvaluation:
                 data_source = self.dataset_id
                 filter_desc = ""
 
-            print(f"Running on: {DATASET_NAME}{filter_desc}")
+            print(f"Running on: {self.dataset_name}{filter_desc}")
 
             # Create experiment name with format: model-split-timestamp
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -187,7 +253,8 @@ class SpotifyAgentEvaluation:
 
         # Step 1: Setup dataset
         try:
-            dataset_id = self.create_dataset()
+            dataset_name = self._prompt_dataset_choice()
+            self.create_dataset(dataset_name)
         except Exception as e:
             print(f"Setup failed: {e}")
             return {"status": "setup_failed", "error": str(e)}
@@ -342,7 +409,7 @@ class SpotifyAgentEvaluation:
                 print(f"   Split: {result['split']}")
                 print(f"   Status: {result['status']}")
         else:
-            print(f"Dataset: {DATASET_NAME}")
+            print(f"Dataset: {self.dataset_name}")
             print(f"Test Cases: {dataset_stats['total_cases']}")
             print(f"Evaluators: 7 production evaluators")
             print(f"Status: {results['status']}")

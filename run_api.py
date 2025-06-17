@@ -44,7 +44,7 @@ def main():
 
     try:
         # Import the new clean API server
-        from agent.simple_api import app
+        from agent.api import app
         import uvicorn
 
         print("📍 Server starting at: http://127.0.0.1:8000")

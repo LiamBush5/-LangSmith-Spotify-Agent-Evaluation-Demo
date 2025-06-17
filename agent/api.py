@@ -58,12 +58,12 @@ class MusicQueryResponse(BaseModel):
 async def startup_event():
     """Initialize agent on startup"""
     global agent
-    print("🎵 Initializing Spotify Music Concierge Agent...")
+    print("Initializing Spotify Music Concierge Agent...")
 
     try:
         agent = SpotifyMusicAgent()
-        print("✅ Agent initialized successfully!")
-        print("🎧 Ready to serve music recommendations")
+        print("Agent initialized successfully!")
+        print("Ready to serve music recommendations")
     except Exception as e:
         print(f"❌ Failed to initialize agent: {e}")
         raise e
@@ -161,5 +161,5 @@ async def submit_feedback(request: FeedbackRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting Spotify Music Concierge API...")
+    print("Starting Spotify Music Concierge API...")
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")

@@ -4,16 +4,13 @@ from datetime import datetime
 from typing import Dict, Any
 from langsmith import Client
 from langsmith import wrappers
-
-# Add parent directory to path so we can import agent module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import our Spotify agent, dataset, and evaluators
+
 from agent.music_agent import run_spotify_agent_with_project_routing
 from dataset import get_evaluation_dataset, get_dataset_stats
 from evaluators import get_all_evaluators
 
-# Initialize LangSmith client
 client = Client()
 
 # Configuration

@@ -1,4 +1,4 @@
-# Spotify Music Concierge
+# Spotify Music Agent
 
 A production-ready AI music agent that provides personalized music recommendations and playlist generation using Spotify's API. Built with LangChain and OpenAI, featuring comprehensive evaluation metrics and a clean web interface.
 
@@ -50,16 +50,20 @@ This system implements an AI-powered music concierge that acts as a DJ, providin
 ## Running the Application
 
 ### Backend API Server
+
 ```bash
 python run_api.py
 ```
+
 The API will be available at `http://127.0.0.1:8000` with documentation at `/docs`.
 
 ### Frontend Development Server
+
 ```bash
 cd spotify-agent-demo
 npm run dev
 ```
+
 The web interface will be available at `http://localhost:3000`.
 
 ## API Endpoints
@@ -71,6 +75,7 @@ The web interface will be available at `http://localhost:3000`.
 ## Evaluation
 
 The system includes 7 evaluation metrics:
+
 - Tool Correctness: Validates proper API usage
 - Tool Efficiency: Ensures optimal performance (≤3 API calls)
 - DJ Style: Enforces conversational, brief responses
@@ -80,6 +85,7 @@ The system includes 7 evaluation metrics:
 - Helpfulness: Measures overall response quality
 
 Run evaluations with:
+
 ```bash
 python evaluations/run.py
 ```
